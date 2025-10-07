@@ -109,10 +109,15 @@ Para fazer deploy gratuito no Streamlit Cloud:
 3. **Conecte** seu repositório GitHub
 4. **Configure**:
    - **Main file path**: `app.py`
+   - **Python version**: 3.13
    - **Requirements**: já incluído no `requirements.txt`
+   - **System packages**: já incluído no `packages.txt`
 5. **Deploy!** - O sistema funcionará perfeitamente na nuvem
 
-> 💡 **Nota**: As imagens de teste são carregadas automaticamente do GitHub, não é necessário fazer upload manual!
+> 💡 **Notas importantes**:
+> - ✅ As imagens de teste são carregadas automaticamente do GitHub
+> - ✅ O `packages.txt` instala dependências do sistema necessárias para o OpenCV
+> - ✅ O `opencv-python-headless` é usado para evitar conflitos no Streamlit Cloud
 
 ## ⚡ Performance
 
@@ -282,13 +287,40 @@ Para modificar a confiança mínima ou outros parâmetros:
 results = model(image, conf=0.5)  # Ajuste o threshold aqui
 ```
 
+## 🔧 Troubleshooting
+
+### Erro: `ImportError: libGL.so.1: cannot open shared object file`
+
+Este erro ocorre quando o OpenCV não encontra as bibliotecas gráficas do sistema. **Solução:**
+
+1. **No Streamlit Cloud**: O arquivo `packages.txt` já está configurado para instalar as dependências necessárias
+2. **Localmente (Linux)**:
+   ```bash
+   sudo apt-get update
+   sudo apt-get install -y libgl1-mesa-glx libglib2.0-0
+   ```
+3. **Localmente (Mac)**: Não é necessário, já funciona nativamente
+4. **Localmente (Windows)**: Não é necessário, já funciona nativamente
+
+### Erro: Conflito entre `opencv-python` e `opencv-python-headless`
+
+**Solução:** O `requirements.txt` já está configurado para instalar o `opencv-python-headless` antes do `ultralytics`, evitando conflitos.
+
+### Deploy travando no Streamlit Cloud
+
+**Possíveis causas:**
+- Tamanho do modelo muito grande
+- Falta de memória durante a instalação
+
+**Solução:** O repositório já está otimizado com versões CPU das bibliotecas, que são menores e mais rápidas para instalar.
+
 ## 📈 Melhorias Futuras
 
 - [ ] Integração com OCR para leitura de caracteres
 - [ ] Suporte a vídeos em tempo real
 - [ ] API REST para integração com outros sistemas
-- [ ] Deploy em nuvem (Heroku, AWS, GCP)
 - [ ] Aplicativo móvel complementar
+- [ ] Otimização adicional do modelo para edge devices
 
 ## 🤝 Contribuição
 

@@ -3,7 +3,6 @@ streamlit
 numpy
 pandas
 pillow
-opencv-python-headless
 
 # Machine Learning & Computer Vision (CPU Optimized for Streamlit Cloud)
 # ✅ Versões CPU-only - SEM CUDA - Otimizado para Streamlit Cloud
@@ -16,6 +15,10 @@ torchaudio
 # 📦 Para desenvolvimento local com GPU (opcional):
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
+# OpenCV headless (ANTES do ultralytics para evitar conflitos)
+opencv-python-headless
+
+# YOLO - ultralytics pode tentar instalar opencv-python, mas opencv-python-headless já estará instalado
 ultralytics
 
 # Data Visualization
