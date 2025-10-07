@@ -1,9 +1,16 @@
 # 🚗 Brazilian License Plate Recognition System
 
+<div align="center">
+
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](https://python.org)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)](https://streamlit.io)
 [![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-orange.svg)](https://github.com/ultralytics/ultralytics)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+[![GitHub](https://img.shields.io/badge/GitHub-sidnei--almeida-181717?logo=github)](https://github.com/sidnei-almeida)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-saaelmeida93-0A66C2?logo=linkedin)](https://www.linkedin.com/in/saaelmeida93/)
+
+</div>
 
 ## 📋 Descrição do Projeto
 
@@ -104,6 +111,8 @@ Para fazer deploy gratuito no Streamlit Cloud:
    - **Main file path**: `app.py`
    - **Requirements**: já incluído no `requirements.txt`
 5. **Deploy!** - O sistema funcionará perfeitamente na nuvem
+
+> 💡 **Nota**: As imagens de teste são carregadas automaticamente do GitHub, não é necessário fazer upload manual!
 
 ## ⚡ Performance
 
@@ -244,11 +253,25 @@ O modelo utiliza a arquitetura YOLOv8 com as seguintes características:
 
 ## 🔧 Personalização
 
+### Imagens de Teste
+
+**✅ As imagens de teste são carregadas automaticamente do GitHub!**
+
+- O sistema busca imagens diretamente do repositório
+- Não é necessário ter as imagens localmente
+- Funciona perfeitamente no Streamlit Cloud
+- Cache automático para melhor performance
+
 ### Adicionar Novas Imagens
 
-1. Coloque suas imagens na pasta `images/`
-2. Certifique-se de que estão nos formatos `.jpg`, `.jpeg` ou `.png`
-3. Reinicie a aplicação para que apareçam no seletor
+Para adicionar suas próprias imagens de teste:
+
+1. Faça upload via interface **"Upload"** na aba Detector
+2. Ou, para adicionar permanentemente:
+   - Coloque suas imagens na pasta `images/`
+   - Adicione os nomes dos arquivos na lista `EXAMPLE_IMAGES` em `app.py`
+   - Faça commit no GitHub
+3. As imagens aparecem automaticamente no seletor
 
 ### Ajustar Parâmetros do Modelo
 
@@ -283,9 +306,16 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 
 ## 👨‍💻 Autor
 
+<div align="center">
+
 **Sidnei Almeida**
-- GitHub: [@sidnei-almeida](https://github.com/sidnei-almeida)
-- LinkedIn: [Sidnei Almeida](https://linkedin.com/in/sidnei-almeida)
+
+[![GitHub](https://img.shields.io/badge/GitHub-sidnei--almeida-181717?style=for-the-badge&logo=github)](https://github.com/sidnei-almeida)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-saaelmeida93-0A66C2?style=for-the-badge&logo=linkedin)](https://www.linkedin.com/in/saaelmeida93/)
+
+Desenvolvedor especializado em Machine Learning e Computer Vision
+
+</div>
 
 ## 🙏 Agradecimentos
 
@@ -297,8 +327,9 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 
 Para suporte e dúvidas:
 
-- Abra uma [Issue](https://github.com/sidnei-almeida/brazilian-license-plate-recognition/issues)
-- Entre em contato via [LinkedIn](https://linkedin.com/in/sidnei-almeida)
+- 💬 Abra uma [Issue](https://github.com/sidnei-almeida/brazilian-license-plate-recognition/issues)
+- 💼 Entre em contato via [LinkedIn](https://www.linkedin.com/in/saaelmeida93/)
+- 📧 Discussões no [GitHub Discussions](https://github.com/sidnei-almeida/brazilian-license-plate-recognition/discussions)
 
 ---
 

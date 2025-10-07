@@ -17,11 +17,33 @@ import cv2
 from streamlit_image_select import image_select
 import torch
 import json
+import urllib.request
+from urllib.error import URLError
 
 # Base do app
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEIGHTS_DIR = os.path.join(BASE_DIR, "plate_detector_v1", "weights")
 IMAGES_DIR = os.path.join(BASE_DIR, "images")
+
+# GitHub configuration
+GITHUB_USER = "sidnei-almeida"
+GITHUB_REPO = "brazilian-license-plate-recognition"
+GITHUB_BRANCH = "main"
+GITHUB_IMAGES_BASE = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/{GITHUB_BRANCH}/images/"
+
+# Lista de imagens de exemplo no GitHub
+EXAMPLE_IMAGES = [
+    "DCAM0015_JPG_jpg.rf.72c86340f8f15c0a24c50bde98fa8f57.jpg",
+    "DCAM0019_JPG_jpg.rf.4fe1c21ca9db3bf51ecb2eca2dfa2924.jpg",
+    "DCAM0019_JPG_jpg.rf.9b2a03f1db093f23eebaab9ae0c24d0c.jpg",
+    "DCAM0019_jpg.rf.b83d52425fc18b9861a453d0555be5dc.jpg",
+    "DCAM0026_JPG_jpg.rf.f04431ad830e8af87618e14df2ede13a.jpg",
+    "DCAM0027_JPG_jpg.rf.75c8a42daa4ee11e52e33f9f81524440.jpg",
+    "DCAM0037_JPG_jpg.rf.da0ac338a913572b8246466136be098d.jpg",
+    "DCAM0040_JPG_jpg.rf.f0319334d8ed56b1102db20b11f6f138.jpg",
+    "DCAM0046_JPG_jpg.rf.650333eab92ea5ae034cc4d8ea43273b.jpg",
+    "DCAM0046_JPG_jpg.rf.9a074131c18947bc622fee6b31df3602.jpg",
+]
 
 st.set_page_config(
     page_title="Brazilian License Plate Recognition • ALPR",
@@ -456,16 +478,39 @@ def get_env_status():
     }
 
 
+@st.cache_data(show_spinner=False)
+def _load_image_from_url(url: str) -> Image.Image:
+    """Carrega imagem de uma URL"""
+    try:
+        with urllib.request.urlopen(url, timeout=10) as response:
+            img_data = response.read()
+            return Image.open(io.BytesIO(img_data))
+    except Exception as e:
+        st.error(f"Error loading image: {e}")
+        return None
+
+
 def _gather_test_images():
-    """Coleta imagens de teste"""
-    if not os.path.exists(IMAGES_DIR):
-        return []
-    
+    """Coleta imagens de teste do GitHub ou local"""
     images = []
-    for ext in ['*.jpg', '*.jpeg', '*.png']:
-        images.extend(glob.glob(os.path.join(IMAGES_DIR, ext)))
     
-    return sorted(images)[:12]
+    # Tenta carregar do GitHub primeiro
+    for img_name in EXAMPLE_IMAGES:
+        url = GITHUB_IMAGES_BASE + img_name
+        images.append({"url": url, "name": img_name, "source": "github"})
+    
+    # Se não tiver imagens no GitHub, tenta local
+    if not images and os.path.exists(IMAGES_DIR):
+        for ext in ['*.jpg', '*.jpeg', '*.png']:
+            local_imgs = glob.glob(os.path.join(IMAGES_DIR, ext))
+            for img_path in local_imgs:
+                images.append({
+                    "url": img_path,
+                    "name": os.path.basename(img_path),
+                    "source": "local"
+                })
+    
+    return images[:10]  # Limita a 10 imagens
 
 
 def _draw_boxes(image_np: np.ndarray, boxes_xyxy: np.ndarray, confs: np.ndarray) -> np.ndarray:
@@ -683,27 +728,42 @@ def page_detect(model):
     with tab_examples:
         examples = _gather_test_images()
         if examples:
-            captions = [f"Image {i+1}" for i in range(len(examples))]
+            # Carregar imagens (do GitHub ou local)
+            loaded_images = []
+            captions = []
             
-            # Container com scroll horizontal
-            st.markdown('<p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Choose a test image:</p>', unsafe_allow_html=True)
+            with st.spinner("Loading example images..."):
+                for i, img_data in enumerate(examples):
+                    if img_data["source"] == "github":
+                        img = _load_image_from_url(img_data["url"])
+                    else:
+                        img = Image.open(img_data["url"])
+                    
+                    if img is not None:
+                        loaded_images.append(img)
+                        captions.append(f"Image {i+1}")
             
-            selected_idx = image_select(
-                "",
-                images=[Image.open(p) for p in examples],
-                captions=captions,
-                use_container_width=False,
-                return_value="index"
-            )
-            
-            if selected_idx is not None:
-                if st.button("Detect Plates", type="primary", use_container_width=True):
-                    img = Image.open(examples[selected_idx])
-                    run_detection(img, key_prefix="example")
+            if loaded_images:
+                # Container com scroll horizontal
+                st.markdown('<p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Choose a test image:</p>', unsafe_allow_html=True)
+                
+                selected_idx = image_select(
+                    "",
+                    images=loaded_images,
+                    captions=captions,
+                    use_container_width=False,
+                    return_value="index"
+                )
+                
+                if selected_idx is not None:
+                    if st.button("Detect Plates", type="primary", use_container_width=True):
+                        run_detection(loaded_images[selected_idx], key_prefix="example")
+            else:
+                st.warning("Could not load example images from GitHub.")
         else:
             st.markdown("""
 <div style="background: rgba(255,107,53,0.08); border-left: 3px solid var(--primary); padding: 0.875rem; border-radius: 6px;">
-  <span style="color: var(--primary); font-weight: 600;">ℹ No test images found in the images/ directory</span>
+  <span style="color: var(--primary); font-weight: 600;">ℹ No test images found</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -831,7 +891,22 @@ def page_about():
   <li><b>Visualization:</b> Plotly</li>
 </ul>
 
-<p><b>Author:</b> <a href="https://github.com/sidnei-almeida" target="_blank">Sidnei Almeida</a></p>
+<h4>👨‍💻 Author</h4>
+<p>
+  <b>Sidnei Almeida</b><br>
+  <a href="https://github.com/sidnei-almeida" target="_blank" style="color: var(--primary); text-decoration: none;">
+    <span style="margin-right: 0.5rem;">🔗 GitHub: @sidnei-almeida</span>
+  </a><br>
+  <a href="https://www.linkedin.com/in/saaelmeida93/" target="_blank" style="color: var(--primary); text-decoration: none;">
+    <span>💼 LinkedIn: @saaelmeida93</span>
+  </a>
+</p>
+
+<h4>📞 Contact & Support</h4>
+<p>
+  • Open an issue on <a href="https://github.com/sidnei-almeida/brazilian-license-plate-recognition/issues" target="_blank" style="color: var(--primary);">GitHub</a><br>
+  • Connect on <a href="https://www.linkedin.com/in/saaelmeida93/" target="_blank" style="color: var(--primary);">LinkedIn</a>
+</p>
 </div>
 """, unsafe_allow_html=True)
 
