@@ -331,14 +331,12 @@ div[data-testid="column"] > div > div {
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 0.75rem !important;
-  justify-content: space-between !important;
   width: 100% !important;
 }
 
 /* Cada imagem individual no image_select - 5 por linha com espaço distribuído */
 div[data-testid="column"] > div > div > div {
   flex: 1 1 calc(20% - 0.6rem) !important;
-  max-width: calc(20% - 0.6rem) !important;
   min-width: 150px !important;
   margin: 0 !important;
 }
@@ -751,7 +749,7 @@ def page_detect(model):
                     "",
                     images=loaded_images,
                     captions=captions,
-                    use_container_width=False,
+                    use_container_width=True,
                     return_value="index"
                 )
                 
