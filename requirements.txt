@@ -1,0 +1,31 @@
+# Core dependencies (compatível com Python 3.11-3.13)
+streamlit
+numpy
+pandas
+pillow
+opencv-python-headless
+
+# Machine Learning & Computer Vision (CPU Optimized for Streamlit Cloud)
+# ✅ Versões CPU-only - SEM CUDA - Otimizado para Streamlit Cloud
+# PyTorch será instalado separadamente com --extra-index-url
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+torchaudio
+
+# 📦 Para desenvolvimento local com GPU (opcional):
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+ultralytics
+
+# Data Visualization
+plotly
+plotly-express
+
+# Streamlit Extensions                                                                                                                                                                                                                                                                                                                                                                                                                                              
+streamlit-image-select
+streamlit-option-menu
+
+# Utilities
+python-dotenv
+watchdog
