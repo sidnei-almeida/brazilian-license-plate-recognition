@@ -23,6 +23,7 @@ Sistema avançado de **Reconhecimento Automático de Placas de Veículos (ALPR)*
 - 📊 **Interface Interativa**: Aplicação Streamlit com visualizações avançadas
 - 📈 **Análise de Performance**: Métricas detalhadas e gráficos interativos
 - 🧪 **Teste em Tempo Real**: Interface para testar o modelo com suas próprias imagens
+- 📱 **Entrada por Câmera Traseira**: Use especificamente sua câmera traseira para detecção em tempo real
 - 📚 **Documentação Completa**: Guias detalhados de uso e desenvolvimento
 
 ## 🏗️ Arquitetura do Sistema
@@ -118,6 +119,9 @@ Para fazer deploy gratuito no Streamlit Cloud:
 > - ✅ As imagens de teste são carregadas automaticamente do GitHub
 > - ✅ O `packages.txt` instala dependências do sistema necessárias para o OpenCV
 > - ✅ O `opencv-python-headless` é usado para evitar conflitos no Streamlit Cloud
+> - ✅ Usa `streamlit-back-camera-input` para acesso específico à câmera traseira
+> - ✅ A câmera traseira é usada especificamente para melhor qualidade de detecção de placas
+> - ✅ Sintaxe correta: `back_camera_input(key="nome_da_key")` sem parâmetros adicionais
 
 ## ⚡ Performance
 
@@ -278,6 +282,19 @@ Para adicionar suas próprias imagens de teste:
    - Faça commit no GitHub
 3. As imagens aparecem automaticamente no seletor
 
+### Usar a Câmera Traseira para Detecção
+
+Para usar especificamente sua **câmera traseira** para detectar placas:
+
+1. **Acesse a aba "Camera"** na seção Detector
+2. **Permita acesso à câmera** quando solicitado pelo navegador
+3. **A aplicação usa automaticamente sua câmera traseira** (ideal para placas)
+4. **Aponte a câmera** para uma placa brasileira e tire uma foto
+5. **Clique em "Detect Plates"** para analisar a imagem capturada
+6. **Veja os resultados** com bounding boxes e detalhes da detecção
+
+> 💡 **Nota**: A qualidade da detecção depende da iluminação e ângulo da placa. A câmera traseira é perfeita para capturar placas à distância.
+
 ### Ajustar Parâmetros do Modelo
 
 Para modificar a confiança mínima ou outros parâmetros:
@@ -305,6 +322,15 @@ Este erro ocorre quando o OpenCV não encontra as bibliotecas gráficas do siste
 ### Erro: Conflito entre `opencv-python` e `opencv-python-headless`
 
 **Solução:** O `requirements.txt` já está configurado para instalar o `opencv-python-headless` antes do `ultralytics`, evitando conflitos.
+
+### Erro: `back_camera_input() got an unexpected keyword argument 'help'`
+
+**Causa:** O componente `streamlit-back-camera-input` não aceita o parâmetro `help`.
+
+**Solução:** Use apenas o parâmetro `key`:
+```python
+camera_image = back_camera_input(key="back_camera_input")
+```
 
 ### Deploy travando no Streamlit Cloud
 

@@ -19,6 +19,7 @@ import torch
 import json
 import urllib.request
 from urllib.error import URLError
+from streamlit_back_camera_input import back_camera_input
 
 # Base do app
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -660,7 +661,7 @@ def page_detect(model):
         imgsz = st.select_slider("Image Size", options=[640, 768, 896, 960, 1024], value=size_default)
     
     # Tabs
-    tab_upload, tab_examples = st.tabs(["Upload", "Examples"])
+    tab_upload, tab_examples, tab_camera = st.tabs(["Upload", "Examples", "Camera"])
     
     def run_detection(pil_img: Image.Image, key_prefix: str = "single"):
         """Executa detecção e mostra resultados"""
@@ -762,6 +763,41 @@ def page_detect(model):
             st.markdown("""
 <div style="background: rgba(255,107,53,0.08); border-left: 3px solid var(--primary); padding: 0.875rem; border-radius: 6px;">
   <span style="color: var(--primary); font-weight: 600;">ℹ No test images found</span>
+</div>
+""", unsafe_allow_html=True)
+
+    with tab_camera:
+        st.markdown('<p style="color: var(--text-secondary); font-size: 0.938rem; margin-bottom: 1.5rem;">Use your back camera to capture license plates for detection</p>', unsafe_allow_html=True)
+
+        # Back camera input - specifically uses the back camera
+        try:
+            camera_image = back_camera_input(key="back_camera_input")
+
+            if camera_image is not None:
+                # Convert to PIL Image for processing
+                image = Image.open(camera_image)
+
+                # Run detection when button is clicked
+                if st.button("Detect Plates", type="primary", use_container_width=True, key="camera_detect"):
+                    run_detection(image, key_prefix="camera")
+
+        except Exception as e:
+            st.error(f"Error accessing back camera: {str(e)}")
+            st.info("💡 Make sure to allow camera permissions and try refreshing the page")
+
+        # Instructions
+        st.markdown("""
+<div style="background: rgba(255,107,53,0.08); border-left: 3px solid var(--primary); padding: 0.875rem; border-radius: 6px; margin-top: 1rem;">
+  <p style="margin: 0; font-size: 0.875rem; color: var(--primary); font-weight: 600;">
+    📱 <strong>How to use back camera:</strong>
+  </p>
+  <ul style="margin: 0.5rem 0 0 1rem; color: var(--text-secondary); font-size: 0.813rem;">
+    <li>🎯 Uses your device's <strong>back camera</strong> specifically</li>
+    <li>Point your camera at a Brazilian license plate</li>
+    <li>Take a clear photo of the license plate</li>
+    <li>Click "Detect Plates" to analyze the image</li>
+    <li>Perfect for scanning license plates at a distance</li>
+  </ul>
 </div>
 """, unsafe_allow_html=True)
 

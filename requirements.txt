@@ -25,9 +25,10 @@ ultralytics
 plotly
 plotly-express
 
-# Streamlit Extensions                                                                                                                                                                                                                                                                                                                                                                                                                                              
+# Streamlit Extensions
 streamlit-image-select
 streamlit-option-menu
+streamlit-back-camera-input
 
 # Utilities
 python-dotenv
