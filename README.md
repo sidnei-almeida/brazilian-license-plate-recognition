@@ -30,8 +30,8 @@ Advanced **Automatic License Plate Recognition (ALPR)** system developed specifi
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Interface     │    │   Modelo YOLOv8  │    │   Processamento │
-│   Streamlit     │───▶│   Treinado       │───▶│   de Imagens    │
+│   Interface     │    │   Modelo YOLOv8  │    │   Image         │
+│   Streamlit     │───▶│   Trained        │──▶│   Processing    │
 │                 │    │                  │    │                 │
 │ - Navigation    │    │ - Detection      │    │ - Bounding      │
 │ - Visualizations│    │ - Classification │    │   Boxes         │
