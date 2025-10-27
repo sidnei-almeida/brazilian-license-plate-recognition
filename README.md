@@ -12,357 +12,357 @@
 
 </div>
 
-## 📋 Descrição do Projeto
+## 📋 Project Description
 
-Sistema avançado de **Reconhecimento Automático de Placas de Veículos (ALPR)** desenvolvido especificamente para placas brasileiras, incluindo o padrão Mercosul. Utiliza um modelo YOLOv8 personalizado treinado com alta precisão para detectar placas em imagens de veículos.
+Advanced **Automatic License Plate Recognition (ALPR)** system developed specifically for Brazilian license plates, including the Mercosul standard. Uses a custom-trained YOLOv8 model with high precision to detect plates in vehicle images.
 
-## ✨ Características Principais
+## ✨ Key Features
 
-- 🔍 **Detecção de Placas**: Modelo YOLOv8 otimizado para placas brasileiras
-- 🚗 **Padrão Mercosul**: Suporte completo ao novo formato de placas brasileiro
-- 📊 **Interface Interativa**: Aplicação Streamlit com visualizações avançadas
-- 📈 **Análise de Performance**: Métricas detalhadas e gráficos interativos
-- 🧪 **Teste em Tempo Real**: Interface para testar o modelo com suas próprias imagens
-- 📱 **Entrada por Câmera Traseira**: Use especificamente sua câmera traseira para detecção em tempo real
-- 📚 **Documentação Completa**: Guias detalhados de uso e desenvolvimento
+- 🔍 **Plate Detection**: YOLOv8 model optimized for Brazilian plates
+- 🚗 **Mercosul Standard**: Full support for the new Brazilian plate format
+- 📊 **Interactive Interface**: Streamlit application with advanced visualizations
+- 📈 **Performance Analysis**: Detailed metrics and interactive charts
+- 🧪 **Real-Time Testing**: Interface to test the model with your own images
+- 📱 **Back Camera Input**: Specifically use your back camera for real-time detection
+- 📚 **Complete Documentation**: Detailed usage and development guides
 
-## 🏗️ Arquitetura do Sistema
+## 🏗️ System Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Interface     │    │   Modelo YOLOv8  │    │   Processamento │
 │   Streamlit     │───▶│   Treinado       │───▶│   de Imagens    │
 │                 │    │                  │    │                 │
-│ - Navegação     │    │ - Detecção       │    │ - Bounding      │
-│ - Visualizações │    │ - Classificação  │    │   Boxes         │
-│ - Testes        │    │ - Confiança      │    │ - Confiança     │
+│ - Navigation    │    │ - Detection      │    │ - Bounding      │
+│ - Visualizations│    │ - Classification │    │   Boxes         │
+│ - Testing       │    │ - Confidence     │    │ - Confidence    │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
-## 📊 Performance do Modelo
+## 📊 Model Performance
 
-### Métricas de Treinamento
-- **Precisão (Precision)**: 99.69%
+### Training Metrics
+- **Precision**: 99.69%
 - **Recall**: 99.19%
 - **mAP@50**: 99.49%
 - **mAP@50-95**: 95.56%
-- **Melhor Época**: 170/300
+- **Best Epoch**: 170/300
 
-### Recursos Utilizados
-- **Modelo Base**: YOLOv8s (Small)
-- **Dataset**: Especializado em placas brasileiras
-- **Épocas de Treinamento**: 300 (com early stopping)
-- **Tamanho do Batch**: 16
-- **Tamanho da Imagem**: 640x640
+### Resources Used
+- **Base Model**: YOLOv8s (Small)
+- **Dataset**: Specialized for Brazilian plates
+- **Training Epochs**: 300 (with early stopping)
+- **Batch Size**: 16
+- **Image Size**: 640x640
 
-## 🚀 Instalação e Execução
+## 🚀 Installation and Execution
 
-### Pré-requisitos
+### Prerequisites
 
-- **Python 3.11+** (incluindo 3.13)
-- **pip** (gerenciador de pacotes)
-- **🌐 Streamlit Cloud** (recomendado) ou ambiente local
+- **Python 3.11+** (including 3.13)
+- **pip** (package manager)
+- **🌐 Streamlit Cloud** (recommended) or local environment
 
-### ⚡ Performance Otimizada
+### ⚡ Optimized Performance
 
-Este sistema foi especialmente otimizado para **Streamlit Cloud**:
+This system has been specially optimized for **Streamlit Cloud**:
 
-- ✅ **Versões CPU** das bibliotecas (menor tamanho)
-- ✅ **Sem necessidade de GPU** para funcionamento
-- ✅ **Deploy direto** no Streamlit Cloud
-- ✅ **Performance adequada** mesmo com recursos limitados
+- ✅ **CPU versions** of libraries (smaller size)
+- ✅ **No GPU required** for operation
+- ✅ **Direct deployment** on Streamlit Cloud
+- ✅ **Adequate performance** even with limited resources
 
-### Instalação
+### Installation
 
-1. **Clone o repositório:**
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/sidnei-almeida/brazilian-license-plate-recognition.git
    cd brazilian-license-plate-recognition
    ```
 
-2. **Crie e ative o ambiente virtual:**
+2. **Create and activate virtual environment:**
    ```bash
    python -m venv venv
    source venv/bin/activate  # Linux/Mac
-   # ou
+   # or
    venv\Scripts\activate     # Windows
    ```
 
-3. **Instale as dependências:**
+3. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Execute a aplicação:**
+4. **Run the application:**
    ```bash
    streamlit run app.py
    ```
 
-5. **Acesse no navegador:**
-   Abra `http://localhost:8501` para visualizar a aplicação.
+5. **Access in browser:**
+   Open `http://localhost:8501` to view the application.
 
-### 🚀 Deploy no Streamlit Cloud (Recomendado)
+### 🚀 Deploy to Streamlit Cloud (Recommended)
 
-Para fazer deploy gratuito no Streamlit Cloud:
+To deploy for free on Streamlit Cloud:
 
-1. **Faça fork** deste repositório no GitHub
-2. **Acesse** [share.streamlit.io](https://share.streamlit.io)
-3. **Conecte** seu repositório GitHub
+1. **Fork** this repository on GitHub
+2. **Visit** [share.streamlit.io](https://share.streamlit.io)
+3. **Connect** your GitHub repository
 4. **Configure**:
    - **Main file path**: `app.py`
    - **Python version**: 3.13
-   - **Requirements**: já incluído no `requirements.txt`
-   - **System packages**: já incluído no `packages.txt`
-5. **Deploy!** - O sistema funcionará perfeitamente na nuvem
+   - **Requirements**: already included in `requirements.txt`
+   - **System packages**: already included in `packages.txt`
+5. **Deploy!** - The system will work perfectly in the cloud
 
-> 💡 **Notas importantes**:
-> - ✅ As imagens de teste são carregadas automaticamente do GitHub
-> - ✅ O `packages.txt` instala dependências do sistema necessárias para o OpenCV
-> - ✅ O `opencv-python-headless` é usado para evitar conflitos no Streamlit Cloud
-> - ✅ Usa `streamlit-back-camera-input` para acesso específico à câmera traseira
-> - ✅ A câmera traseira é usada especificamente para melhor qualidade de detecção de placas
-> - ✅ Sintaxe correta: `back_camera_input(key="nome_da_key")` sem parâmetros adicionais
+> 💡 **Important notes**:
+> - ✅ Test images are automatically loaded from GitHub
+> - ✅ The `packages.txt` installs system dependencies required for OpenCV
+> - ✅ `opencv-python-headless` is used to avoid conflicts on Streamlit Cloud
+> - ✅ Uses `streamlit-back-camera-input` for specific access to the back camera
+> - ✅ The back camera is specifically used for better license plate detection quality
+> - ✅ Correct syntax: `back_camera_input(key="key_name")` without additional parameters
 
 ## ⚡ Performance
 
-### Otimizado para Streamlit Cloud
+### Optimized for Streamlit Cloud
 
-| Ambiente | Tempo de Inferência | Recursos | Status |
-|----------|-------------------|----------|---------|
-| **Streamlit Cloud** | ~3-8 segundos | CPU Compartilhada | ✅ **Otimizado** |
-| **Desenvolvimento Local** | ~2-5 segundos | CPU Local | ✅ Suportado |
-| **GPU Local** | ~0.5-2 segundos | GPU NVIDIA | ⚠️ Opcional |
+| Environment | Inference Time | Resources | Status |
+|-------------|----------------|-----------|--------|
+| **Streamlit Cloud** | ~3-8 seconds | Shared CPU | ✅ **Optimized** |
+| **Local Development** | ~2-5 seconds | Local CPU | ✅ Supported |
+| **Local GPU** | ~0.5-2 seconds | NVIDIA GPU | ⚠️ Optional |
 
-### Otimizações Aplicadas
+### Applied Optimizations
 
-- ✅ **CPU Optimized**: Versões leves das bibliotecas
-- ✅ **Memory Efficient**: Uso otimizado de RAM
-- ✅ **Streamlit Cloud Ready**: Deploy direto sem configurações
-- ✅ **Caching Inteligente**: Modelo pré-carregado para reduzir latência
-- ✅ **Batch Processing**: Processamento eficiente para recursos limitados
+- ✅ **CPU Optimized**: Lightweight library versions
+- ✅ **Memory Efficient**: Optimized RAM usage
+- ✅ **Streamlit Cloud Ready**: Direct deployment without configurations
+- ✅ **Smart Caching**: Pre-loaded model to reduce latency
+- ✅ **Batch Processing**: Efficient processing for limited resources
 
 ## 🔧 Troubleshooting
 
-### Problemas Comuns
+### Common Issues
 
-**❌ "Modelo não encontrado"**
-- Certifique-se de que a pasta `plate_detector_v1/weights/` existe
-- Verifique se o arquivo `best.pt` está presente
+**❌ "Model not found"**
+- Make sure the `plate_detector_v1/weights/` folder exists
+- Check if the `best.pt` file is present
 
-**❌ "Erro de importação do torch/ultralytics"**
+**❌ "Import error for torch/ultralytics"**
 ```bash
-# Reinstalar dependências:
+# Reinstall dependencies:
 pip uninstall torch torchvision torchaudio ultralytics
 pip install -r requirements.txt
 ```
 
-**❌ "Memória insuficiente no Streamlit Cloud"**
-- O sistema foi otimizado para funcionar com recursos limitados
-- Se necessário, use imagens menores (o modelo aceita até 640x640)
+**❌ "Insufficient memory on Streamlit Cloud"**
+- The system is optimized to work with limited resources
+- If necessary, use smaller images (the model accepts up to 640x640)
 
-**❌ "Lentidão no processamento"**
-- No Streamlit Cloud: ~3-8 segundos por imagem (normal)
-- Localmente: ~2-5 segundos por imagem (CPU)
-- Para acelerar: considere usar GPU local (opcional)
+**❌ "Slow processing"**
+- On Streamlit Cloud: ~3-8 seconds per image (normal)
+- Locally: ~2-5 seconds per image (CPU)
+- To speed up: consider using local GPU (optional)
 
-### Performance na CPU
+### CPU Performance
 
-O sistema funciona perfeitamente com CPU:
-- **Streamlit Cloud**: 3-8 segundos por imagem
-- **Desenvolvimento local**: 2-5 segundos por imagem
-- **Memória RAM**: ~2-4GB necessários
+The system works perfectly with CPU:
+- **Streamlit Cloud**: 3-8 seconds per image
+- **Local development**: 2-5 seconds per image
+- **RAM**: ~2-4GB required
 
-### Logs e Debug
+### Logs and Debug
 
-Para ativar logs detalhados no código:
+To enable detailed logs in the code:
 ```python
 import logging
 logging.basicConfig(level=logging.INFO)
 ```
 
-## 📁 Estrutura do Projeto
+## 📁 Project Structure
 
 ```
 brazilian-license-plate-recognition/
 │
-├── 📁 images/                          # Imagens de teste
+├── 📁 images/                          # Test images
 │   ├── DCAM0015_JPG_jpg.rf.72c8...jpg
 │   ├── DCAM0019_JPG_jpg.rf.4fe1...jpg
 │   └── ...
 │
-├── 📁 plate_detector_v1/               # Modelo treinado
+├── 📁 plate_detector_v1/               # Trained model
 │   ├── weights/
-│   │   ├── best.pt                     # Melhor modelo
-│   │   └── last.pt                     # Último modelo
-│   ├── args.yaml                       # Hiperparâmetros
-│   ├── results.csv                     # Métricas por época
-│   └── results.png                     # Gráfico de resultados
+│   │   ├── best.pt                     # Best model
+│   │   └── last.pt                     # Last model
+│   ├── args.yaml                       # Hyperparameters
+│   ├── results.csv                     # Metrics per epoch
+│   └── results.png                     # Results chart
 │
-├── 📁 notebooks/                       # Notebooks de treinamento
+├── 📁 notebooks/                       # Training notebooks
 │   └── 1_YOLOv8_Training_Brazilian_Plates.ipynb
 │
-├── 📄 app.py                           # Aplicação Streamlit principal
-├── 📄 requirements.txt                 # Dependências Python
-├── 📄 README.md                        # Este arquivo
-└── 📄 plate_detector_v1_summary.json   # Resumo do treinamento
+├── 📄 app.py                           # Main Streamlit application
+├── 📄 requirements.txt                 # Python dependencies
+├── 📄 README.md                        # This file
+└── 📄 plate_detector_v1_summary.json   # Training summary
 ```
 
-## 🎯 Como Usar
+## 🎯 How to Use
 
-### 1. Página Inicial
-- Visão geral do sistema
-- Principais características
-- Gráfico de resultados do treinamento
+### 1. Home Page
+- System overview
+- Key features
+- Results chart do treinamento
 
-### 2. Teste do Modelo
-- **Seletor Visual**: Escolha imagens usando o `streamlit-image-select`
-- **Detecção**: Clique em "Detectar Placas" para processar
-- **Resultados**: Visualize bounding boxes e níveis de confiança
+### 2. Model Testing
+- **Visual Selector**: Choose images using `streamlit-image-select`
+- **Detection**: Click "Detect Plates" to process
+- **Results**: View bounding boxes and confidence levels
 
-### 3. Análise de Resultados
-- **Métricas**: Cards com principais indicadores de performance
-- **Gráficos Interativos**: Evolução das métricas durante o treinamento
-- **Análise de Perdas**: Curvas de treinamento detalhadas
+### 3. Results Analysis
+- **Metrics**: Cards with main performance indicators
+- **Interactive Charts**: Metric evolution during training
+- **Loss Analysis**: Detailed training curves
 
-### 4. Sobre o Modelo
-- **Arquitetura**: Detalhes técnicos do YOLOv8
-- **Hiperparâmetros**: Configurações utilizadas no treinamento
-- **Processo**: Explicação passo a passo da detecção
+### 4. About the Model
+- **Architecture**: Technical details of YOLOv8
+- **Hyperparameters**: Settings used in training
+- **Process**: Step-by-step explanation of detection
 
-### 5. Sobre os Dados
-- **Dataset**: Características do conjunto de treinamento
-- **Tipos de Placas**: Exemplos de diferentes formatos
-- **Imagens de Teste**: Galeria das imagens disponíveis
+### 5. About the Data
+- **Dataset**: Training set characteristics
+- **Plate Types**: Examples of different formats
+- **Test Images**: Gallery of available images
 
-## 🛠️ Desenvolvimento
+## 🛠️ Development
 
-### Estrutura do Modelo YOLOv8
+### YOLOv8 Model Architecture
 
-O modelo utiliza a arquitetura YOLOv8 com as seguintes características:
+The model uses the YOLOv8 architecture with the following features:
 
-- **Backbone**: CSPDarknet53 modificado
+- **Backbone**: Modified CSPDarknet53
 - **Neck**: PAN (Path Aggregation Network)
-- **Head**: Cabeça de detecção YOLOv8
-- **Tamanho**: Variante "small" (YOLOv8s)
+- **Head**: YOLOv8 detection head
+- **Size**: "small" variant (YOLOv8s)
 
-### Processo de Treinamento
+### Training Process
 
-1. **Preparação dos Dados**: Dataset formatado no padrão YOLO
-2. **Configuração**: Definição de hiperparâmetros
-3. **Treinamento**: 300 épocas com early stopping
-4. **Validação**: Avaliação em conjunto de validação
-5. **Otimização**: Seleção do melhor modelo
+1. **Data Preparation**: Dataset formatted in YOLO standard
+2. **Configuration**: Hyperparameter definition
+3. **Training**: 300 epochs with early stopping
+4. **Validation**: Evaluation on validation set
+5. **Optimization**: Best model selection
 
-### Métricas Utilizadas
+### Metrics Used
 
-- **Precision**: Fração de detecções corretas
-- **Recall**: Fração de placas reais detectadas
+- **Precision**: Fraction of correct detections
+- **Recall**: Fraction of real plates detected
 - **mAP@50**: Mean Average Precision (IoU ≥ 0.5)
-- **mAP@50-95**: Mean Average Precision (média IoU 0.5-0.95)
+- **mAP@50-95**: Mean Average Precision (average IoU 0.5-0.95)
 
-## 🔧 Personalização
+## 🔧 Customization
 
-### Imagens de Teste
+### Test Images
 
-**✅ As imagens de teste são carregadas automaticamente do GitHub!**
+**✅ Test images are automatically loaded from GitHub!**
 
-- O sistema busca imagens diretamente do repositório
-- Não é necessário ter as imagens localmente
-- Funciona perfeitamente no Streamlit Cloud
-- Cache automático para melhor performance
+- The system loads images directly from the repository
+- No need to have images locally
+- Works perfectly on Streamlit Cloud
+- Automatic cache for better performance
 
-### Adicionar Novas Imagens
+### Add New Images
 
-Para adicionar suas próprias imagens de teste:
+To add your own test images:
 
-1. Faça upload via interface **"Upload"** na aba Detector
-2. Ou, para adicionar permanentemente:
-   - Coloque suas imagens na pasta `images/`
-   - Adicione os nomes dos arquivos na lista `EXAMPLE_IMAGES` em `app.py`
-   - Faça commit no GitHub
-3. As imagens aparecem automaticamente no seletor
+1. Upload via interface **"Upload"** in the Detector tab
+2. Or, to add permanently:
+   - Place your images in the folder `images/`
+    - Add file names to the list `EXAMPLE_IMAGES` in `app.py`
+   - Commit to GitHub
+3. Images appear automatically in the selector
 
-### Usar a Câmera Traseira para Detecção
+### Use Back Camera for Detection
 
-Para usar especificamente sua **câmera traseira** para detectar placas:
+To specifically use your **back camera** to detect plates:
 
-1. **Acesse a aba "Camera"** na seção Detector
-2. **Permita acesso à câmera** quando solicitado pelo navegador
-3. **A aplicação usa automaticamente sua câmera traseira** (ideal para placas)
-4. **Aponte a câmera** para uma placa brasileira e tire uma foto
-5. **Clique em "Detect Plates"** para analisar a imagem capturada
-6. **Veja os resultados** com bounding boxes e detalhes da detecção
+1. **Access the "Camera" tab** in the Detector section
+2. **Allow camera access** when requested by the browser
+3. **The application automatically uses your back camera** (ideal for plates)
+4. **Point the camera** at a Brazilian license plate and take a photo
+5. **Click "Detect Plates"** to analyze the captured image
+6. **View the results** with bounding boxes and detection details
 
-> 💡 **Nota**: A qualidade da detecção depende da iluminação e ângulo da placa. A câmera traseira é perfeita para capturar placas à distância.
+> 💡 **Note**: Detection quality depends on lighting and plate angle. The back camera is perfect for capturing plates at a distance.
 
-### Ajustar Parâmetros do Modelo
+### Adjust Model Parameters
 
-Para modificar a confiança mínima ou outros parâmetros:
+To modify the minimum confidence or other parameters:
 
 ```python
-# Em app.py, linha 54
-results = model(image, conf=0.5)  # Ajuste o threshold aqui
+# In app.py, line 54
+results = model(image, conf=0.5)  # Adjust the threshold here
 ```
 
 ## 🔧 Troubleshooting
 
-### Erro: `ImportError: libGL.so.1: cannot open shared object file`
+### Error: `ImportError: libGL.so.1: cannot open shared object file`
 
-Este erro ocorre quando o OpenCV não encontra as bibliotecas gráficas do sistema. **Solução:**
+This error occurs when OpenCV cannot find the system graphics libraries. **Solution:**
 
-1. **No Streamlit Cloud**: O arquivo `packages.txt` já está configurado para instalar as dependências necessárias
-2. **Localmente (Linux)**:
+1. **No Streamlit Cloud**: The `packages.txt` file is already configured to install the necessary dependencies
+2. **Locally (Linux)**:
    ```bash
    sudo apt-get update
    sudo apt-get install -y libgl1-mesa-glx libglib2.0-0
    ```
-3. **Localmente (Mac)**: Não é necessário, já funciona nativamente
-4. **Localmente (Windows)**: Não é necessário, já funciona nativamente
+3. **Locally (Mac)**: Not needed, already works natively
+4. **Locally (Windows)**: Not needed, already works natively
 
-### Erro: Conflito entre `opencv-python` e `opencv-python-headless`
+### Error: Conflict between `opencv-python` and `opencv-python-headless`
 
-**Solução:** O `requirements.txt` já está configurado para instalar o `opencv-python-headless` antes do `ultralytics`, evitando conflitos.
+**Solution:** The `requirements.txt` is already configured to install `opencv-python-headless` before `ultralytics`, avoiding conflicts.
 
-### Erro: `back_camera_input() got an unexpected keyword argument 'help'`
+### Error: `back_camera_input() got an unexpected keyword argument 'help'`
 
-**Causa:** O componente `streamlit-back-camera-input` não aceita o parâmetro `help`.
+**Cause:** The `streamlit-back-camera-input` component does not accept the `help` parameter.
 
-**Solução:** Use apenas o parâmetro `key`:
+**Solution:** Use only the `key` parameter:
 ```python
 camera_image = back_camera_input(key="back_camera_input")
 ```
 
-### Deploy travando no Streamlit Cloud
+### Deploy hanging on Streamlit Cloud
 
-**Possíveis causas:**
-- Tamanho do modelo muito grande
-- Falta de memória durante a instalação
+**Possible causes:**
+- Model size too large
+- Lack of memory during installation
 
-**Solução:** O repositório já está otimizado com versões CPU das bibliotecas, que são menores e mais rápidas para instalar.
+**Solution:** The repository is already optimized with CPU versions of libraries, which are smaller and faster to install.
 
-## 📈 Melhorias Futuras
+## 📈 Future Improvements
 
-- [ ] Integração com OCR para leitura de caracteres
-- [ ] Suporte a vídeos em tempo real
-- [ ] API REST para integração com outros sistemas
-- [ ] Aplicativo móvel complementar
-- [ ] Otimização adicional do modelo para edge devices
+- [ ] OCR integration for character reading
+- [ ] Real-time video support
+- [ ] REST API for integration with other systems
+- [ ] Complementary mobile app
+- [ ] Additional model optimization for edge devices
 
-## 🤝 Contribuição
+## 🤝 Contributing
 
-Contribuições são bem-vindas! Siga estes passos:
+Contributions are welcome! Follow these steps:
 
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
+1. Fork the project
+2. Create a branch for your feature (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## 📝 Licença
+## 📝 License
 
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+This project is under the MIT license. See the `LICENSE` file for more details.
 
-## 👨‍💻 Autor
+## 👨‍💻 Author
 
 <div align="center">
 
@@ -371,24 +371,24 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 [![GitHub](https://img.shields.io/badge/GitHub-sidnei--almeida-181717?style=for-the-badge&logo=github)](https://github.com/sidnei-almeida)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-saaelmeida93-0A66C2?style=for-the-badge&logo=linkedin)](https://www.linkedin.com/in/saaelmeida93/)
 
-Desenvolvedor especializado em Machine Learning e Computer Vision
+Developer specialized in Machine Learning and Computer Vision
 
 </div>
 
-## 🙏 Agradecimentos
+## 🙏 Acknowledgments
 
-- **Ultralytics**: Desenvolvedores do YOLOv8
-- **Streamlit**: Framework para criação da interface
-- **Comunidade Python**: Por bibliotecas e ferramentas excepcionais
+- **Ultralytics**: YOLOv8 developers
+- **Streamlit**: Framework for creating the interface
+- **Python Community**: For exceptional libraries and tools
 
-## 📞 Suporte
+## 📞 Support
 
-Para suporte e dúvidas:
+For support and questions:
 
-- 💬 Abra uma [Issue](https://github.com/sidnei-almeida/brazilian-license-plate-recognition/issues)
-- 💼 Entre em contato via [LinkedIn](https://www.linkedin.com/in/saaelmeida93/)
-- 📧 Discussões no [GitHub Discussions](https://github.com/sidnei-almeida/brazilian-license-plate-recognition/discussions)
+- 💬 Open an [Issue](https://github.com/sidnei-almeida/brazilian-license-plate-recognition/issues)
+- 💼 Contact via [LinkedIn](https://www.linkedin.com/in/saaelmeida93/)
+- 📧 Discussions on [GitHub Discussions](https://github.com/sidnei-almeida/brazilian-license-plate-recognition/discussions)
 
 ---
 
-⭐ **Se este projeto foi útil para você, considere dar uma estrela!** ⭐
+⭐ **If this project was useful to you, consider giving it a star!** ⭐

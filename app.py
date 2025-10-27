@@ -21,7 +21,7 @@ import urllib.request
 from urllib.error import URLError
 from streamlit_back_camera_input import back_camera_input
 
-# Base do app
+# App base directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEIGHTS_DIR = os.path.join(BASE_DIR, "plate_detector_v1", "weights")
 IMAGES_DIR = os.path.join(BASE_DIR, "images")
@@ -32,7 +32,7 @@ GITHUB_REPO = "brazilian-license-plate-recognition"
 GITHUB_BRANCH = "main"
 GITHUB_IMAGES_BASE = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/{GITHUB_BRANCH}/images/"
 
-# Lista de imagens de exemplo no GitHub
+# List of example images on GitHub
 EXAMPLE_IMAGES = [
     "DCAM0015_JPG_jpg.rf.72c86340f8f15c0a24c50bde98fa8f57.jpg",
     "DCAM0019_JPG_jpg.rf.4fe1c21ca9db3bf51ecb2eca2dfa2924.jpg",
@@ -53,7 +53,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Estilo premium dark - Tons de cinza com acentos quentes
+# Premium dark style - Gray tones with warm accents
 st.markdown(
     """
 <style>
@@ -342,7 +342,7 @@ div[data-testid="column"] > div > div > div {
   margin: 0 !important;
 }
 
-/* Imagens dentro do image_select - altura proporcional */
+/* Images inside image_select - proportional height */
 div[data-testid="column"] > div > div > div img {
   width: 100% !important;
   height: auto !important;
@@ -403,30 +403,30 @@ div[data-testid="stImage"]:not(div[data-testid="column"] div[data-testid="stImag
 
 @st.cache_resource(show_spinner=False)
 def load_model() -> YOLO | None:
-    """Carrega o modelo YOLO de detecção de placas"""
+    """Load YOLO license plate detection model"""
     model_path = os.path.join(WEIGHTS_DIR, "best.pt")
     if not os.path.exists(model_path):
         alt_path = os.path.join(WEIGHTS_DIR, "last.pt")
         if os.path.exists(alt_path):
             model_path = alt_path
         else:
-            st.error(f"Modelo não encontrado em {WEIGHTS_DIR}")
+            st.error(f"Model not found in {WEIGHTS_DIR}")
             return None
     
     try:
         model = YOLO(model_path)
-        # Força CPU se não houver GPU
+        # Force CPU if no GPU available
         if not torch.cuda.is_available():
             model.to('cpu')
         return model
     except Exception as e:
-        st.error(f"Erro ao carregar modelo: {str(e)}")
+            st.error(f"Error loading model: {str(e)}")
         return None
 
 
 @st.cache_data(show_spinner=False)
 def load_training_data():
-    """Carrega dados de treinamento"""
+    """Load training data"""
     summary_path = os.path.join(BASE_DIR, "plate_detector_v1_summary.json")
     results_csv = os.path.join(BASE_DIR, "plate_detector_v1", "results.csv")
     args_yaml = os.path.join(BASE_DIR, "plate_detector_v1", "args.yaml")
@@ -447,7 +447,7 @@ def load_training_data():
         with open(args_yaml, "r") as f:
             args = yaml.safe_load(f)
     
-    # Imagens de treino
+    # Training images
     images = {
         "results": os.path.join(BASE_DIR, "plate_detector_v1", "results.png"),
         "confusion": os.path.join(BASE_DIR, "plate_detector_v1", "confusion_matrix.png"),
@@ -461,7 +461,7 @@ def load_training_data():
 
 
 def get_env_status():
-    """Retorna informações do ambiente"""
+    """Returns environment information"""
     gpu = torch.cuda.is_available()
     device_name = torch.cuda.get_device_name(0) if gpu else platform.processor() or "CPU"
     torch_ver = torch.__version__
@@ -479,7 +479,7 @@ def get_env_status():
 
 @st.cache_data(show_spinner=False)
 def _load_image_from_url(url: str) -> Image.Image:
-    """Carrega imagem de uma URL"""
+    """Load image from a URL"""
     try:
         with urllib.request.urlopen(url, timeout=10) as response:
             img_data = response.read()
@@ -490,15 +490,15 @@ def _load_image_from_url(url: str) -> Image.Image:
 
 
 def _gather_test_images():
-    """Coleta imagens de teste do GitHub ou local"""
+    """Collect test images from GitHub or local"""
     images = []
     
-    # Tenta carregar do GitHub primeiro
+    # Try loading from GitHub first
     for img_name in EXAMPLE_IMAGES:
         url = GITHUB_IMAGES_BASE + img_name
         images.append({"url": url, "name": img_name, "source": "github"})
     
-    # Se não tiver imagens no GitHub, tenta local
+    # If no images on GitHub, try local
     if not images and os.path.exists(IMAGES_DIR):
         for ext in ['*.jpg', '*.jpeg', '*.png']:
             local_imgs = glob.glob(os.path.join(IMAGES_DIR, ext))
@@ -513,16 +513,16 @@ def _gather_test_images():
 
 
 def _draw_boxes(image_np: np.ndarray, boxes_xyxy: np.ndarray, confs: np.ndarray) -> np.ndarray:
-    """Desenha bounding boxes nas placas detectadas"""
+    """Draw bounding boxes on detected plates"""
     out = image_np.copy()
-    color = (53, 107, 255)  # Primary color (laranja) em BGR: #ff6b35 -> BGR(53, 107, 255)
+    color = (53, 107, 255)  # Primary color (orange) in BGR: #ff6b35 -> BGR(53, 107, 255)
     
     for i in range(len(boxes_xyxy)):
         x1, y1, x2, y2 = boxes_xyxy[i].astype(int)
-        cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)  # Espessura reduzida de 3 para 2
+        cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)  # Thickness reduced from 3 to 2
         
         label = f"Plate {confs[i]:.2f}"
-        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)  # Fonte menor
+        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)  # Smaller font
         cv2.rectangle(out, (x1, max(0, y1 - th - 8)), (x1 + tw + 8, y1), color, -1)
         cv2.putText(out, label, (x1 + 4, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
     
@@ -530,14 +530,14 @@ def _draw_boxes(image_np: np.ndarray, boxes_xyxy: np.ndarray, confs: np.ndarray)
 
 
 def yolo_predict(model: YOLO, image: Image.Image, conf: float, iou: float, imgsz: int):
-    """Realiza predição com YOLO"""
+    """Perform YOLO prediction"""
     img_np = np.array(image.convert("RGB"))
     results = model.predict(img_np, conf=conf, iou=iou, imgsz=imgsz, verbose=False)
     return results
 
 
 def page_home(model, summary, results_df):
-    """Página inicial"""
+    """Home page"""
     st.markdown(
         '<div class="main-hero">\
           <div class="plate-icon">ABC1D23</div>\
@@ -545,16 +545,16 @@ def page_home(model, summary, results_df):
         </div>',
         unsafe_allow_html=True,
     )
-    st.markdown('<div class="subtitle">Sistema ALPR com YOLOv8 para detecção de placas Mercosul</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subtitle">ALPR System with YOLOv8 for Mercosul license plate detection</div>', unsafe_allow_html=True)
     
     # Status cards
     col1, col2, col3 = st.columns(3)
     with col1:
-        status = "Carregado" if model else "Erro"
+        status = "Loaded" if model else "Error"
         badge_class = "badge-success" if model else "badge-danger"
         st.markdown(f"""
 <div class="metric-card">
-  <p class="metric-label">Modelo YOLO</p>
+  <p class="metric-label">YOLO Model</p>
   <span class="badge {badge_class}">{status}</span>
 </div>
 """, unsafe_allow_html=True)
@@ -563,7 +563,7 @@ def page_home(model, summary, results_df):
         num_images = len(_gather_test_images())
         st.markdown(f"""
 <div class="metric-card">
-  <p class="metric-label">Imagens de Teste</p>
+  <p class="metric-label">Test Images</p>
   <div class="metric-value">{num_images}</div>
 </div>
 """, unsafe_allow_html=True)
@@ -621,7 +621,7 @@ def page_home(model, summary, results_df):
 
 
 def page_detect(model):
-    """Página de detecção"""
+    """Detection page"""
     st.markdown('<h2 style="color: var(--primary); font-size: 1.5rem; margin-bottom: 0.5rem;">License Plate Detector</h2>', unsafe_allow_html=True)
     st.markdown('<p style="color: var(--text-secondary); font-size: 0.938rem; margin-bottom: 1.5rem;">Upload an image or select a test example to detect Brazilian license plates</p>', unsafe_allow_html=True)
     
@@ -664,7 +664,7 @@ def page_detect(model):
     tab_upload, tab_examples, tab_camera = st.tabs(["Upload", "Examples", "Camera"])
     
     def run_detection(pil_img: Image.Image, key_prefix: str = "single"):
-        """Executa detecção e mostra resultados"""
+        """Run detection and show results"""
         start = time.time()
         results = yolo_predict(model, pil_img, conf, iou, imgsz)
         latency = (time.time() - start) * 1000
@@ -803,12 +803,12 @@ def page_detect(model):
 
 
 def page_training():
-    """Página de análise de treinamento"""
+    """Training analysis page"""
     st.markdown('<h2 style="color: var(--primary); font-size: 1.5rem; margin-bottom: 1rem;">Training Analytics</h2>', unsafe_allow_html=True)
     
     summary, results_df, args, images = load_training_data()
     
-    # Matriz de confusão e gráficos
+    # Confusion matrix and charts
     col1, col2 = st.columns(2)
     with col1:
         if os.path.exists(images["confusion"]):
@@ -899,7 +899,7 @@ def page_training():
 
 
 def page_about():
-    """Página sobre"""
+    """About page"""
     st.markdown('<h2 style="color: var(--primary); font-size: 1.5rem; margin-bottom: 1rem;">About</h2>', unsafe_allow_html=True)
     
     st.markdown("""
@@ -946,7 +946,7 @@ def page_about():
 
 
 def main():
-    """Função principal"""
+    """Main function"""
     with st.sidebar:
         st.markdown("<h3 style='color:#ff6b35; margin-bottom: 0.875rem; font-size: 1.125rem;'>Navigation</h3>", unsafe_allow_html=True)
         
@@ -974,7 +974,7 @@ def main():
             },
         )
         
-        # Status do ambiente
+        # Environment status
         st.markdown("---")
         st.markdown("<h4 style='margin-bottom:0.625rem; font-size: 0.938rem;'>System Info</h4>", unsafe_allow_html=True)
         env = get_env_status()
