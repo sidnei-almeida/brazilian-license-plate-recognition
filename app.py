@@ -1,38 +1,36 @@
-import os
+import base64
 import io
-import glob
-import yaml
-import time
-import platform
-import numpy as np
-import pandas as pd
-import streamlit as st
-from PIL import Image
-from ultralytics import YOLO
-from ultralytics import __version__ as yolo_version
-import plotly.express as px
-import plotly.graph_objects as go
-from streamlit_option_menu import option_menu
-import cv2
-from streamlit_image_select import image_select
-import torch
 import json
-import urllib.request
-from urllib.error import URLError
-from streamlit_back_camera_input import back_camera_input
+import os
+import time
+from functools import lru_cache
+from pathlib import Path
+from typing import Dict, List, Optional
 
-# App base directory
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-WEIGHTS_DIR = os.path.join(BASE_DIR, "plate_detector_v1", "weights")
-IMAGES_DIR = os.path.join(BASE_DIR, "images")
+import cv2
+import numpy as np
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from PIL import Image
+from pydantic import BaseModel, Field
+from ultralytics import YOLO
 
-# GitHub configuration
+# ---------------------------------------------------------
+# Paths and configuration
+# ---------------------------------------------------------
+BASE_DIR = Path(__file__).resolve().parent
+WEIGHTS_DIR = BASE_DIR / "plate_detector_v1" / "weights"
+DEFAULT_MODEL_PATH = Path(
+    os.getenv("MODEL_WEIGHTS_PATH", WEIGHTS_DIR / "best.pt")
+)
+SUMMARY_PATH = BASE_DIR / "plate_detector_v1_summary.json"
+
 GITHUB_USER = "sidnei-almeida"
 GITHUB_REPO = "brazilian-license-plate-recognition"
 GITHUB_BRANCH = "main"
-GITHUB_IMAGES_BASE = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/{GITHUB_BRANCH}/images/"
-
-# List of example images on GitHub
+GITHUB_IMAGES_BASE = (
+    f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/{GITHUB_BRANCH}/images/"
+)
 EXAMPLE_IMAGES = [
     "DCAM0015_JPG_jpg.rf.72c86340f8f15c0a24c50bde98fa8f57.jpg",
     "DCAM0019_JPG_jpg.rf.4fe1c21ca9db3bf51ecb2eca2dfa2924.jpg",
@@ -46,965 +44,331 @@ EXAMPLE_IMAGES = [
     "DCAM0046_JPG_jpg.rf.9a074131c18947bc622fee6b31df3602.jpg",
 ]
 
-st.set_page_config(
-    page_title="Brazilian License Plate Recognition • ALPR",
-    page_icon="🚗",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
 
-# Premium dark style - Gray tones with warm accents
-st.markdown(
-    """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-:root {
-  --primary: #ff6b35;
-  --accent: #f7931e;
-  --success: #52b788;
-  --danger: #e63946;
-  --warning: #ffa500;
-  --dark-bg: #18181b;
-  --card-bg: #27272a;
-  --sidebar-bg: #1f1f23;
-  --text: #e4e4e7;
-  --text-secondary: #a1a1aa;
-  --muted: #71717a;
-  --border: #3f3f46;
-  --shadow: 0 4px 16px rgba(0,0,0,0.25);
-}
-.stApp { 
-  background: var(--dark-bg); 
-  color: var(--text); 
-}
-.main .block-container { 
-  max-width: none !important; 
-  padding-left: 1.5rem; 
-  padding-right: 1.5rem; 
-}
-
-h1, h2, h3, h4, h5 { 
-  font-family: 'Inter', sans-serif; 
-  color: var(--text);
-  font-weight: 600;
-}
-
-h1 { font-size: 1.75rem; }
-h2 { font-size: 1.5rem; }
-h3 { font-size: 1.25rem; }
-h4 { font-size: 1rem; }
-
-/* Hero Title */
-.main-hero { 
-  font-size: 2rem; 
-  font-weight: 700; 
-  margin: 0.75rem 0 1rem; 
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-}
-.title-gradient { 
-  background: linear-gradient(135deg, var(--primary), var(--accent)); 
-  -webkit-background-clip: text; 
-  -webkit-text-fill-color: transparent; 
-}
-.subtitle { 
-  color: var(--text-secondary); 
-  margin-bottom: 1.5rem; 
-  font-size: 0.938rem;
-}
-
-/* Cards */
-.card { 
-  background: var(--card-bg); 
-  border: 1px solid var(--border); 
-  border-radius: 8px; 
-  padding: 1rem; 
-  box-shadow: var(--shadow); 
-  margin-bottom: 0.875rem;
-  font-size: 0.875rem;
-}
-.metric-card { 
-  background: linear-gradient(135deg, rgba(255,107,53,0.05), rgba(247,147,30,0.05)); 
-  border: 1px solid rgba(255,107,53,0.15); 
-  border-radius: 8px; 
-  padding: 0.875rem; 
-  text-align: center;
-}
-.metric-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--primary);
-  margin: 0.375rem 0;
-}
-.metric-label {
-  font-size: 0.688rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-/* Badge */
-.badge { 
-  display: inline-block; 
-  padding: 0.25rem 0.625rem; 
-  border-radius: 4px; 
-  font-size: 0.75rem; 
-  font-weight: 600;
-  border: 1px solid;
-}
-.badge-primary {
-  background: rgba(255,107,53,0.12); 
-  border-color: rgba(255,107,53,0.25); 
-  color: var(--primary);
-}
-.badge-success {
-  background: rgba(82,183,136,0.12); 
-  border-color: rgba(82,183,136,0.25); 
-  color: var(--success);
-}
-.badge-danger {
-  background: rgba(230,57,70,0.12); 
-  border-color: rgba(230,57,70,0.25); 
-  color: var(--danger);
-}
-
-/* Plate icon */
-.plate-icon {
-  width: 54px;
-  height: 36px;
-  background: linear-gradient(135deg, #f4f4f5 0%, #e4e4e7 100%);
-  border: 2px solid #52525b;
-  border-radius: 3px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.688rem;
-  font-weight: 700;
-  color: #27272a;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-}
-
-hr { 
-  border-top: 1px solid var(--border); 
-  margin: 1.5rem 0;
-}
-
-/* Custom alerts */
-.stAlert {
-  background: var(--card-bg) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 8px !important;
-  padding: 0.875rem !important;
-  font-size: 0.875rem !important;
-}
-
-.stAlert > div {
-  gap: 0.5rem !important;
-}
-
-/* Success alert */
-div[data-baseweb="notification"][kind="success"] {
-  background: rgba(82,183,136,0.08) !important;
-  border-left: 3px solid var(--success) !important;
-  color: var(--text) !important;
-}
-
-/* Error alert */
-div[data-baseweb="notification"][kind="error"] {
-  background: rgba(230,57,70,0.08) !important;
-  border-left: 3px solid var(--danger) !important;
-  color: var(--text) !important;
-}
-
-/* Warning alert */
-div[data-baseweb="notification"][kind="warning"] {
-  background: rgba(255,165,0,0.08) !important;
-  border-left: 3px solid var(--warning) !important;
-  color: var(--text) !important;
-}
-
-/* Info alert */
-div[data-baseweb="notification"][kind="info"] {
-  background: rgba(255,107,53,0.08) !important;
-  border-left: 3px solid var(--primary) !important;
-  color: var(--text) !important;
-}
-
-/* Streamlit buttons */
-.stButton > button {
-  background: linear-gradient(135deg, rgba(255,107,53,0.12), rgba(247,147,30,0.12)) !important;
-  border: 1px solid rgba(255,107,53,0.25) !important;
-  border-radius: 6px !important;
-  color: var(--text) !important;
-  font-size: 0.875rem !important;
-  font-weight: 600 !important;
-  padding: 0.5rem 1rem !important;
-  transition: all 0.2s ease !important;
-}
-
-.stButton > button:hover {
-  background: linear-gradient(135deg, rgba(255,107,53,0.2), rgba(247,147,30,0.2)) !important;
-  border-color: rgba(255,107,53,0.4) !important;
-  transform: translateY(-1px);
-}
-
-.stButton > button[kind="primary"] {
-  background: linear-gradient(135deg, var(--primary), var(--accent)) !important;
-  border: 1px solid var(--primary) !important;
-  color: white !important;
-}
-
-.stButton > button[kind="primary"]:hover {
-  background: linear-gradient(135deg, var(--accent), var(--primary)) !important;
-  box-shadow: 0 4px 12px rgba(255,107,53,0.3);
-}
-
-/* Sliders */
-.stSlider {
-  padding: 0.5rem 0;
-}
-
-.stSlider > div > div > div {
-  background: var(--border) !important;
-}
-
-.stSlider > div > div > div > div {
-  background: var(--primary) !important;
-}
-
-/* Tabs */
-.stTabs [data-baseweb="tab-list"] {
-  gap: 0.5rem;
-  background: transparent;
-}
-
-.stTabs [data-baseweb="tab"] {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 6px 6px 0 0;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  font-weight: 600;
-  padding: 0.625rem 1.25rem;
-}
-
-.stTabs [data-baseweb="tab"]:hover {
-  background: var(--sidebar-bg);
-  color: var(--text);
-}
-
-.stTabs [aria-selected="true"] {
-  background: linear-gradient(135deg, rgba(255,107,53,0.12), rgba(247,147,30,0.12));
-  border-bottom-color: var(--primary);
-  color: var(--primary);
-}
-
-/* Download button */
-.stDownloadButton > button {
-  background: linear-gradient(135deg, var(--success), rgba(82,183,136,0.8)) !important;
-  border: 1px solid var(--success) !important;
-  color: white !important;
-}
-
-.stDownloadButton > button:hover {
-  background: linear-gradient(135deg, rgba(82,183,136,0.8), var(--success)) !important;
-  box-shadow: 0 4px 12px rgba(82,183,136,0.3);
-}
-
-/* File uploader */
-.stFileUploader {
-  background: var(--card-bg);
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.stFileUploader:hover {
-  border-color: var(--primary);
-  background: rgba(255,107,53,0.03);
-}
-
-/* Image selector do streamlit-image-select */
-/* Container principal do image_select */
-div[data-testid="column"] > div > div {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 0.75rem !important;
-  width: 100% !important;
-}
-
-/* Cada imagem individual no image_select - 5 por linha com espaço distribuído */
-div[data-testid="column"] > div > div > div {
-  flex: 1 1 calc(20% - 0.6rem) !important;
-  min-width: 150px !important;
-  margin: 0 !important;
-}
-
-/* Images inside image_select - proportional height */
-div[data-testid="column"] > div > div > div img {
-  width: 100% !important;
-  height: auto !important;
-  aspect-ratio: 4/3 !important;
-  object-fit: cover !important;
-  border: 2px solid var(--border) !important;
-  border-radius: 8px !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-}
-
-/* Hover nas imagens do image_select */
-div[data-testid="column"] > div > div > div img:hover {
-  transform: translateY(-2px) !important;
-  border-color: var(--primary) !important;
-  box-shadow: 0 6px 16px rgba(255,107,53,0.25) !important;
-}
-
-/* Legenda das imagens */
-div[data-testid="column"] > div > div > div p {
-  font-size: 0.75rem !important;
-  color: var(--text-secondary) !important;
-  text-align: center !important;
-  margin-top: 0.5rem !important;
-}
-
-/* Imagens normais do Streamlit (Analytics, etc) - manter tamanho normal */
-div[data-testid="stImage"]:not(div[data-testid="column"] div[data-testid="stImage"]) img {
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-div[data-testid="stImage"]:not(div[data-testid="column"] div[data-testid="stImage"]) img:hover {
-  transform: translateY(-2px);
-  border-color: var(--primary);
-  box-shadow: 0 6px 16px rgba(255,107,53,0.25);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .main-hero { font-size: 1.5rem; }
-  .card { padding: 0.875rem; }
-  .metric-card { padding: 0.75rem; }
-  
-  /* Image select mobile - 2 por linha */
-  div[data-testid="column"] > div > div > div {
-    flex: 1 1 calc(50% - 0.375rem) !important;
-    max-width: calc(50% - 0.375rem) !important;
-    min-width: 120px !important;
-  }
-}
-</style>
-""",
-    unsafe_allow_html=True,
-)
+# ---------------------------------------------------------
+# Pydantic models
+# ---------------------------------------------------------
+class BoundingBox(BaseModel):
+    xmin: int
+    ymin: int
+    xmax: int
+    ymax: int
+    width: int
+    height: int
+    xmin_norm: float = Field(..., ge=0.0, le=1.0)
+    ymin_norm: float = Field(..., ge=0.0, le=1.0)
+    xmax_norm: float = Field(..., ge=0.0, le=1.0)
+    ymax_norm: float = Field(..., ge=0.0, le=1.0)
 
 
-@st.cache_resource(show_spinner=False)
-def load_model() -> YOLO | None:
-    """Load YOLO license plate detection model"""
-    model_path = os.path.join(WEIGHTS_DIR, "best.pt")
-    if not os.path.exists(model_path):
-        alt_path = os.path.join(WEIGHTS_DIR, "last.pt")
-        if os.path.exists(alt_path):
-            model_path = alt_path
-        else:
-            st.error(f"Model not found in {WEIGHTS_DIR}")
-            return None
-    
+class Detection(BaseModel):
+    id: int
+    class_id: int
+    class_name: str
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    box: BoundingBox
+
+
+class ImageInfo(BaseModel):
+    width: int
+    height: int
+    mode: str
+
+
+class PerformanceInfo(BaseModel):
+    inference_time_ms: float
+    model_name: str
+    framework_version: str
+
+
+class DetectionResponse(BaseModel):
+    detections: List[Detection]
+    image: ImageInfo
+    performance: PerformanceInfo
+    annotated_image_base64: Optional[str] = None
+
+
+class HealthResponse(BaseModel):
+    status: str
+    model_path: Optional[str]
+    weights_available: bool
+    detections_ready: bool
+
+
+class ModelMetrics(BaseModel):
+    model_name: Optional[str] = None
+    metrics: Dict[str, float] = Field(default_factory=dict)
+    training_settings: Dict[str, str] = Field(default_factory=dict)
+
+
+class SamplesResponse(BaseModel):
+    images: List[str]
+
+
+# ---------------------------------------------------------
+# Utility functions
+# ---------------------------------------------------------
+def _prepare_model_path() -> Path:
+    if DEFAULT_MODEL_PATH.exists():
+        return DEFAULT_MODEL_PATH
+    fallback = WEIGHTS_DIR / "last.pt"
+    if fallback.exists():
+        return fallback
+    raise FileNotFoundError(
+        f"Model weights not found. Expected at {DEFAULT_MODEL_PATH} or {fallback}"
+    )
+
+
+@lru_cache(maxsize=1)
+def get_model() -> YOLO:
+    model_path = _prepare_model_path()
+    model = YOLO(str(model_path))
+    model.to("cpu")
+    return model
+
+
+@lru_cache(maxsize=1)
+def get_model_metadata() -> ModelMetrics:
+    if not SUMMARY_PATH.exists():
+        return ModelMetrics()
+    with SUMMARY_PATH.open("r", encoding="utf-8") as file:
+        data = json.load(file)
+
+    metrics = data.get("best_model_metrics", {})
+    meta = data.get("training_details", {})
+    model_name = data.get("model_name") or data.get("model", "YOLOv8")
+    return ModelMetrics(
+        model_name=str(model_name),
+        metrics={
+            key: float(value)
+            for key, value in metrics.items()
+            if isinstance(value, (int, float))
+        },
+        training_settings={
+            "epochs": str(meta.get("epochs") or data.get("epochs", "")),
+            "imgsz": str(meta.get("imgsz") or data.get("imgsz", "")),
+            "batch": str(meta.get("batch") or data.get("batch", "")),
+        },
+    )
+
+
+def _load_image(data: bytes) -> Image.Image:
     try:
-        model = YOLO(model_path)
-        # Force CPU if no GPU available
-        if not torch.cuda.is_available():
-            model.to('cpu')
-        return model
-    except Exception as e:
-            st.error(f"Error loading model: {str(e)}")
-        return None
-
-
-@st.cache_data(show_spinner=False)
-def load_training_data():
-    """Load training data"""
-    summary_path = os.path.join(BASE_DIR, "plate_detector_v1_summary.json")
-    results_csv = os.path.join(BASE_DIR, "plate_detector_v1", "results.csv")
-    args_yaml = os.path.join(BASE_DIR, "plate_detector_v1", "args.yaml")
-    
-    summary = None
-    results_df = None
-    args = None
-    
-    if os.path.exists(summary_path):
-        with open(summary_path, "r") as f:
-            summary = json.load(f)
-    
-    if os.path.exists(results_csv):
-        results_df = pd.read_csv(results_csv)
-        results_df.columns = results_df.columns.str.strip()
-    
-    if os.path.exists(args_yaml):
-        with open(args_yaml, "r") as f:
-            args = yaml.safe_load(f)
-    
-    # Training images
-    images = {
-        "results": os.path.join(BASE_DIR, "plate_detector_v1", "results.png"),
-        "confusion": os.path.join(BASE_DIR, "plate_detector_v1", "confusion_matrix.png"),
-        "confusion_norm": os.path.join(BASE_DIR, "plate_detector_v1", "confusion_matrix_normalized.png"),
-        "labels": os.path.join(BASE_DIR, "plate_detector_v1", "labels.jpg"),
-        "pr_curve": os.path.join(BASE_DIR, "plate_detector_v1", "BoxPR_curve.png"),
-        "f1_curve": os.path.join(BASE_DIR, "plate_detector_v1", "BoxF1_curve.png"),
-    }
-    
-    return summary, results_df, args, images
-
-
-def get_env_status():
-    """Returns environment information"""
-    gpu = torch.cuda.is_available()
-    device_name = torch.cuda.get_device_name(0) if gpu else platform.processor() or "CPU"
-    torch_ver = torch.__version__
-    cuda_ver = torch.version.cuda if gpu else "N/A"
-    
-    return {
-        "device": "GPU" if gpu else "CPU",
-        "device_name": device_name,
-        "torch": torch_ver,
-        "cuda": cuda_ver,
-        "ultralytics": yolo_version,
-        "python": platform.python_version(),
-    }
-
-
-@st.cache_data(show_spinner=False)
-def _load_image_from_url(url: str) -> Image.Image:
-    """Load image from a URL"""
-    try:
-        with urllib.request.urlopen(url, timeout=10) as response:
-            img_data = response.read()
-            return Image.open(io.BytesIO(img_data))
-    except Exception as e:
-        st.error(f"Error loading image: {e}")
-        return None
-
-
-def _gather_test_images():
-    """Collect test images from GitHub or local"""
-    images = []
-    
-    # Try loading from GitHub first
-    for img_name in EXAMPLE_IMAGES:
-        url = GITHUB_IMAGES_BASE + img_name
-        images.append({"url": url, "name": img_name, "source": "github"})
-    
-    # If no images on GitHub, try local
-    if not images and os.path.exists(IMAGES_DIR):
-        for ext in ['*.jpg', '*.jpeg', '*.png']:
-            local_imgs = glob.glob(os.path.join(IMAGES_DIR, ext))
-            for img_path in local_imgs:
-                images.append({
-                    "url": img_path,
-                    "name": os.path.basename(img_path),
-                    "source": "local"
-                })
-    
-    return images[:10]  # Limita a 10 imagens
+        image = Image.open(io.BytesIO(data))
+        return image.convert("RGB")
+    except Exception as exc:  # pylint: disable=broad-except
+        raise HTTPException(status_code=400, detail="Invalid image file.") from exc
 
 
 def _draw_boxes(image_np: np.ndarray, boxes_xyxy: np.ndarray, confs: np.ndarray) -> np.ndarray:
-    """Draw bounding boxes on detected plates"""
-    out = image_np.copy()
-    color = (53, 107, 255)  # Primary color (orange) in BGR: #ff6b35 -> BGR(53, 107, 255)
-    
-    for i in range(len(boxes_xyxy)):
-        x1, y1, x2, y2 = boxes_xyxy[i].astype(int)
-        cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)  # Thickness reduced from 3 to 2
-        
-        label = f"Plate {confs[i]:.2f}"
-        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)  # Smaller font
-        cv2.rectangle(out, (x1, max(0, y1 - th - 8)), (x1 + tw + 8, y1), color, -1)
-        cv2.putText(out, label, (x1 + 4, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-    
-    return out
-
-
-def yolo_predict(model: YOLO, image: Image.Image, conf: float, iou: float, imgsz: int):
-    """Perform YOLO prediction"""
-    img_np = np.array(image.convert("RGB"))
-    results = model.predict(img_np, conf=conf, iou=iou, imgsz=imgsz, verbose=False)
-    return results
-
-
-def page_home(model, summary, results_df):
-    """Home page"""
-    st.markdown(
-        '<div class="main-hero">\
-          <div class="plate-icon">ABC1D23</div>\
-          <span class="title-gradient">Brazilian License Plate Recognition</span>\
-        </div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown('<div class="subtitle">ALPR System with YOLOv8 for Mercosul license plate detection</div>', unsafe_allow_html=True)
-    
-    # Status cards
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        status = "Loaded" if model else "Error"
-        badge_class = "badge-success" if model else "badge-danger"
-        st.markdown(f"""
-<div class="metric-card">
-  <p class="metric-label">YOLO Model</p>
-  <span class="badge {badge_class}">{status}</span>
-</div>
-""", unsafe_allow_html=True)
-    
-    with col2:
-        num_images = len(_gather_test_images())
-        st.markdown(f"""
-<div class="metric-card">
-  <p class="metric-label">Test Images</p>
-  <div class="metric-value">{num_images}</div>
-</div>
-""", unsafe_allow_html=True)
-    
-    with col3:
-        if summary and 'best_model_metrics' in summary:
-            map_val = summary['best_model_metrics'].get('mAP50-95(B)', 0)
-            map_text = f"{map_val:.1%}"
-        else:
-            map_text = "N/A"
-        st.markdown(f"""
-<div class="metric-card">
-  <p class="metric-label">mAP@50-95</p>
-  <div class="metric-value">{map_text}</div>
-</div>
-""", unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Destaques
-    if summary and 'best_model_metrics' in summary:
-        st.markdown('<h3 style="color: var(--text); font-size: 1.125rem; margin: 1.5rem 0 0.75rem 0;">Model Performance</h3>', unsafe_allow_html=True)
-        metrics = summary['best_model_metrics']
-        
-        col1, col2, col3, col4 = st.columns(4)
-        metrics_display = [
-            (col1, "Precision", metrics.get('precision(B)', 0), "--primary"),
-            (col2, "Recall", metrics.get('recall(B)', 0), "--success"),
-            (col3, "mAP@50", metrics.get('mAP50(B)', 0), "--primary"),
-            (col4, "mAP@50-95", metrics.get('mAP50-95(B)', 0), "--accent"),
-        ]
-        
-        for col, label, value, color in metrics_display:
-            with col:
-                st.markdown(f"""
-<div class="card" style="text-align: center;">
-  <p style="font-size: 0.75rem; color: var(--muted); margin: 0;">{label}</p>
-  <p style="font-size: 1.75rem; font-weight: 700; color: var({color}); margin: 0.5rem 0;">{value:.1%}</p>
-</div>
-""", unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Visualizações
-    st.markdown('<h3 style="color: var(--text); font-size: 1.125rem; margin: 1.5rem 0 0.75rem 0;">Training Results</h3>', unsafe_allow_html=True)
-    _, _, _, images = load_training_data()
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if os.path.exists(images["results"]):
-            st.image(images["results"], caption="Training Evolution", use_container_width=True)
-    with col2:
-        if os.path.exists(images["confusion_norm"]):
-            st.image(images["confusion_norm"], caption="Confusion Matrix", use_container_width=True)
-
-
-def page_detect(model):
-    """Detection page"""
-    st.markdown('<h2 style="color: var(--primary); font-size: 1.5rem; margin-bottom: 0.5rem;">License Plate Detector</h2>', unsafe_allow_html=True)
-    st.markdown('<p style="color: var(--text-secondary); font-size: 0.938rem; margin-bottom: 1.5rem;">Upload an image or select a test example to detect Brazilian license plates</p>', unsafe_allow_html=True)
-    
-    if model is None:
-        st.error("Model not loaded. Please check the weights directory.")
-        return
-    
-    # Presets
-    st.markdown('<h3 style="color: var(--text); font-size: 1.125rem; margin-bottom: 0.75rem;">Detection Settings</h3>', unsafe_allow_html=True)
-    cols_p = st.columns(3)
-    preset = st.session_state.get("preset", "Balanced")
-    with cols_p[0]:
-        if st.button("Fast", use_container_width=True):
-            preset = "Fast"
-    with cols_p[1]:
-        if st.button("Balanced", use_container_width=True):
-            preset = "Balanced"
-    with cols_p[2]:
-        if st.button("Precise", use_container_width=True):
-            preset = "Precise"
-    st.session_state["preset"] = preset
-    
-    # Valores por preset
-    if preset == "Fast":
-        conf_default, iou_default, size_default = 0.30, 0.45, 640
-    elif preset == "Precise":
-        conf_default, iou_default, size_default = 0.15, 0.55, 960
-    else:
-        conf_default, iou_default, size_default = 0.25, 0.50, 768
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        conf = st.slider("Confidence", 0.05, 0.95, conf_default, 0.05)
-    with col2:
-        iou = st.slider("IoU", 0.1, 0.9, iou_default, 0.05)
-    with col3:
-        imgsz = st.select_slider("Image Size", options=[640, 768, 896, 960, 1024], value=size_default)
-    
-    # Tabs
-    tab_upload, tab_examples, tab_camera = st.tabs(["Upload", "Examples", "Camera"])
-    
-    def run_detection(pil_img: Image.Image, key_prefix: str = "single"):
-        """Run detection and show results"""
-        start = time.time()
-        results = yolo_predict(model, pil_img, conf, iou, imgsz)
-        latency = (time.time() - start) * 1000
-        
-        if results:
-            r0 = results[0]
-            xyxy = r0.boxes.xyxy.cpu().numpy() if r0.boxes is not None else np.empty((0, 4))
-            confs = r0.boxes.conf.cpu().numpy() if r0.boxes is not None else np.empty((0,))
-            
-            img_np = np.array(pil_img.convert("RGB"))
-            annotated = _draw_boxes(img_np, xyxy, confs)
-            
-            col_res1, col_res2 = st.columns(2)
-            with col_res1:
-                st.image(pil_img, caption="Original Image", use_container_width=True)
-            with col_res2:
-                st.image(annotated, caption=f"Detection Results ({latency:.1f} ms)", use_container_width=True)
-            
-            # Detalhes
-            st.markdown('<h3 style="color: var(--text); font-size: 1.125rem; margin: 1.5rem 0 0.75rem 0;">Detection Details</h3>', unsafe_allow_html=True)
-            if len(xyxy) > 0:
-                st.markdown(f"""
-<div style="background: rgba(82,183,136,0.08); border-left: 3px solid var(--success); padding: 0.875rem; border-radius: 6px; margin-bottom: 1rem;">
-  <span style="color: var(--success); font-weight: 600;">✓ {len(xyxy)} plate(s) detected</span>
-</div>
-""", unsafe_allow_html=True)
-                for i, (box, conf_val) in enumerate(zip(xyxy, confs)):
-                    x1, y1, x2, y2 = box.astype(int)
-                    st.markdown(f"""
-<div class="card">
-  <b>Plate {i+1}</b><br>
-  Confidence: <span class="badge badge-primary">{conf_val:.1%}</span><br>
-  Position: ({x1}, {y1}) → ({x2}, {y2})
-</div>
-""", unsafe_allow_html=True)
-            else:
-                st.markdown("""
-<div style="background: rgba(255,165,0,0.08); border-left: 3px solid var(--warning); padding: 0.875rem; border-radius: 6px;">
-  <span style="color: var(--warning); font-weight: 600;">⚠ No plates detected in this image</span>
-</div>
-""", unsafe_allow_html=True)
-            
-            # Download
-            buf = io.BytesIO()
-            Image.fromarray(annotated).save(buf, format="PNG")
-            st.download_button(
-                "Download Annotated Image",
-                data=buf.getvalue(),
-                file_name=f"detection_{key_prefix}.png",
-                mime="image/png",
-                use_container_width=True
-            )
-    
-    with tab_upload:
-        uploaded = st.file_uploader("Select an image (PNG/JPG)", type=["png", "jpg", "jpeg"])
-        if uploaded is not None:
-            image = Image.open(uploaded)
-            run_detection(image, key_prefix="upload")
-    
-    with tab_examples:
-        examples = _gather_test_images()
-        if examples:
-            # Carregar imagens (do GitHub ou local)
-            loaded_images = []
-            captions = []
-            
-            with st.spinner("Loading example images..."):
-                for i, img_data in enumerate(examples):
-                    if img_data["source"] == "github":
-                        img = _load_image_from_url(img_data["url"])
-                    else:
-                        img = Image.open(img_data["url"])
-                    
-                    if img is not None:
-                        loaded_images.append(img)
-                        captions.append(f"Image {i+1}")
-            
-            if loaded_images:
-                # Container com scroll horizontal
-                st.markdown('<p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Choose a test image:</p>', unsafe_allow_html=True)
-                
-                selected_idx = image_select(
-                    "",
-                    images=loaded_images,
-                    captions=captions,
-                    use_container_width=True,
-                    return_value="index"
-                )
-                
-                if selected_idx is not None:
-                    if st.button("Detect Plates", type="primary", use_container_width=True):
-                        run_detection(loaded_images[selected_idx], key_prefix="example")
-            else:
-                st.warning("Could not load example images from GitHub.")
-        else:
-            st.markdown("""
-<div style="background: rgba(255,107,53,0.08); border-left: 3px solid var(--primary); padding: 0.875rem; border-radius: 6px;">
-  <span style="color: var(--primary); font-weight: 600;">ℹ No test images found</span>
-</div>
-""", unsafe_allow_html=True)
-
-    with tab_camera:
-        st.markdown('<p style="color: var(--text-secondary); font-size: 0.938rem; margin-bottom: 1.5rem;">Use your back camera to capture license plates for detection</p>', unsafe_allow_html=True)
-
-        # Back camera input - specifically uses the back camera
-        try:
-            camera_image = back_camera_input(key="back_camera_input")
-
-            if camera_image is not None:
-                # Convert to PIL Image for processing
-                image = Image.open(camera_image)
-
-                # Run detection when button is clicked
-                if st.button("Detect Plates", type="primary", use_container_width=True, key="camera_detect"):
-                    run_detection(image, key_prefix="camera")
-
-        except Exception as e:
-            st.error(f"Error accessing back camera: {str(e)}")
-            st.info("💡 Make sure to allow camera permissions and try refreshing the page")
-
-        # Instructions
-        st.markdown("""
-<div style="background: rgba(255,107,53,0.08); border-left: 3px solid var(--primary); padding: 0.875rem; border-radius: 6px; margin-top: 1rem;">
-  <p style="margin: 0; font-size: 0.875rem; color: var(--primary); font-weight: 600;">
-    📱 <strong>How to use back camera:</strong>
-  </p>
-  <ul style="margin: 0.5rem 0 0 1rem; color: var(--text-secondary); font-size: 0.813rem;">
-    <li>🎯 Uses your device's <strong>back camera</strong> specifically</li>
-    <li>Point your camera at a Brazilian license plate</li>
-    <li>Take a clear photo of the license plate</li>
-    <li>Click "Detect Plates" to analyze the image</li>
-    <li>Perfect for scanning license plates at a distance</li>
-  </ul>
-</div>
-""", unsafe_allow_html=True)
-
-
-def page_training():
-    """Training analysis page"""
-    st.markdown('<h2 style="color: var(--primary); font-size: 1.5rem; margin-bottom: 1rem;">Training Analytics</h2>', unsafe_allow_html=True)
-    
-    summary, results_df, args, images = load_training_data()
-    
-    # Confusion matrix and charts
-    col1, col2 = st.columns(2)
-    with col1:
-        if os.path.exists(images["confusion"]):
-            st.image(images["confusion"], caption="Confusion Matrix", use_container_width=True)
-    with col2:
-        if os.path.exists(images["pr_curve"]):
-            st.image(images["pr_curve"], caption="Precision-Recall Curve", use_container_width=True)
-    
-    st.markdown("---")
-    
-    # Gráficos de evolução
-    if results_df is not None:
-        st.markdown('<h3 style="color: var(--text); font-size: 1.125rem; margin: 1.5rem 0 0.75rem 0;">Training Evolution</h3>', unsafe_allow_html=True)
-        
-        metric_cols = [
-            c for c in results_df.columns
-            if any(k in c for k in ["precision", "recall", "mAP50", "box_loss", "cls_loss"])
-        ]
-        
-        if metric_cols:
-            # Gráfico de métricas
-            fig = go.Figure()
-            epochs = results_df.get("epoch", pd.Series(range(len(results_df))))
-            
-            for c in metric_cols:
-                if "metrics" in c:
-                    fig.add_trace(go.Scatter(
-                        x=epochs, 
-                        y=results_df[c], 
-                        mode="lines+markers", 
-                        name=c.replace("metrics/", "").replace("(B)", "")
-                    ))
-            
-            fig.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font_color='#e4e4e7',
-                xaxis_title="Epoch",
-                yaxis_title="Value",
-                legend_title="Metric",
-                height=500,
-                colorway=['#ff6b35', '#52b788', '#f7931e', '#e63946']  # Paleta quente
-            )
-            st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.markdown("""
-<div style="background: rgba(255,165,0,0.08); border-left: 3px solid var(--warning); padding: 0.875rem; border-radius: 6px;">
-  <span style="color: var(--warning); font-weight: 600;">⚠ Training results not found</span>
-</div>
-""", unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Hiperparâmetros
-    if args:
-        st.markdown('<h3 style="color: var(--text); font-size: 1.125rem; margin-bottom: 0.75rem;">Hyperparameters</h3>', unsafe_allow_html=True)
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("""
-<div class="card">
-  <h4>Basic</h4>
-  <p>Epochs: <span class="badge badge-primary">{}</span></p>
-  <p>Batch: <span class="badge badge-primary">{}</span></p>
-  <p>Image Size: <span class="badge badge-primary">{}</span></p>
-</div>
-""".format(args.get('epochs', 'N/A'), args.get('batch', 'N/A'), args.get('imgsz', 'N/A')), unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("""
-<div class="card">
-  <h4>Optimization</h4>
-  <p>LR: <span class="badge badge-success">{}</span></p>
-  <p>Momentum: <span class="badge badge-success">{}</span></p>
-  <p>Weight Decay: <span class="badge badge-success">{}</span></p>
-</div>
-""".format(args.get('lr0', 'N/A'), args.get('momentum', 'N/A'), args.get('weight_decay', 'N/A')), unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown("""
-<div class="card">
-  <h4>Augmentation</h4>
-  <p>Flip: <span class="badge badge-primary">{}</span></p>
-  <p>Mosaic: <span class="badge badge-primary">{}</span></p>
-  <p>MixUp: <span class="badge badge-primary">{}</span></p>
-</div>
-""".format(args.get('fliplr', 'N/A'), args.get('mosaic', 'N/A'), args.get('mixup', 'N/A')), unsafe_allow_html=True)
-
-
-def page_about():
-    """About page"""
-    st.markdown('<h2 style="color: var(--primary); font-size: 1.5rem; margin-bottom: 1rem;">About</h2>', unsafe_allow_html=True)
-    
-    st.markdown("""
-<div class="card">
-<h3>Brazilian License Plate Recognition System</h3>
-<p>Professional ALPR system using YOLOv8 for detecting Brazilian Mercosul standard license plates.</p>
-
-<h4>Features</h4>
-<ul>
-  <li>Real-time license plate detection</li>
-  <li>Support for Mercosul standard plates</li>
-  <li>Adjustable confidence and IoU thresholds</li>
-  <li>Multiple detection presets (Fast, Balanced, Precise)</li>
-  <li>Training analytics and performance metrics</li>
-  <li>Export annotated images</li>
-</ul>
-
-<h4>Technical Stack</h4>
-<ul>
-  <li><b>Model:</b> YOLOv8s</li>
-  <li><b>Framework:</b> PyTorch + Ultralytics</li>
-  <li><b>Interface:</b> Streamlit</li>
-  <li><b>Visualization:</b> Plotly</li>
-</ul>
-
-<h4>👨‍💻 Author</h4>
-<p>
-  <b>Sidnei Almeida</b><br>
-  <a href="https://github.com/sidnei-almeida" target="_blank" style="color: var(--primary); text-decoration: none;">
-    <span style="margin-right: 0.5rem;">🔗 GitHub: @sidnei-almeida</span>
-  </a><br>
-  <a href="https://www.linkedin.com/in/saaelmeida93/" target="_blank" style="color: var(--primary); text-decoration: none;">
-    <span>💼 LinkedIn: @saaelmeida93</span>
-  </a>
-</p>
-
-<h4>📞 Contact & Support</h4>
-<p>
-  • Open an issue on <a href="https://github.com/sidnei-almeida/brazilian-license-plate-recognition/issues" target="_blank" style="color: var(--primary);">GitHub</a><br>
-  • Connect on <a href="https://www.linkedin.com/in/saaelmeida93/" target="_blank" style="color: var(--primary);">LinkedIn</a>
-</p>
-</div>
-""", unsafe_allow_html=True)
-
-
-def main():
-    """Main function"""
-    with st.sidebar:
-        st.markdown("<h3 style='color:#ff6b35; margin-bottom: 0.875rem; font-size: 1.125rem;'>Navigation</h3>", unsafe_allow_html=True)
-        
-        selected = option_menu(
-            menu_title=None,
-            options=["Home", "Detector", "Analytics", "About"],
-            icons=["house", "search", "graph-up", "info-circle"],
-            default_index=0,
-            styles={
-                "container": {"padding": "0", "background": "transparent"},
-                "icon": {"color": "#ff6b35", "font-size": "14px"},
-                "nav-link": {
-                    "color": "#e4e4e7",
-                    "font-size": "0.875rem",
-                    "padding": "0.625rem 0.875rem",
-                    "border-radius": "6px",
-                    "margin": "0.2rem 0"
-                },
-                "nav-link-selected": {
-                    "background": "linear-gradient(135deg, rgba(255,107,53,0.12), rgba(247,147,30,0.12))",
-                    "color": "#ff6b35",
-                    "border-left": "3px solid #ff6b35",
-                    "font-weight": "600"
-                },
-            },
+    annotated = image_np.copy()
+    color = (53, 107, 255)
+    for idx in range(len(boxes_xyxy)):
+        x1, y1, x2, y2 = boxes_xyxy[idx].astype(int)
+        cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
+        label = f"Plate {confs[idx]:.2f}"
+        (text_width, text_height), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+        cv2.rectangle(
+            annotated,
+            (x1, max(0, y1 - text_height - 8)),
+            (x1 + text_width + 8, y1),
+            color,
+            -1,
         )
-        
-        # Environment status
-        st.markdown("---")
-        st.markdown("<h4 style='margin-bottom:0.625rem; font-size: 0.938rem;'>System Info</h4>", unsafe_allow_html=True)
-        env = get_env_status()
-        
-        device_badge = "badge-success" if env['device'] == "GPU" else "badge-primary"
-        st.markdown(f"""
-<div class="card" style="padding: 0.875rem;">
-  <p style="margin: 0.2rem 0; font-size: 0.813rem;"><b>Device:</b> <span class="badge {device_badge}">{env['device']}</span></p>
-  <p style="margin: 0.2rem 0; font-size: 0.688rem; color: var(--muted);">{env['device_name'][:30]}</p>
-  <hr style="margin: 0.625rem 0;">
-  <p style="margin: 0.2rem 0; font-size: 0.75rem;"><b>Python:</b> <span style="color: var(--text-secondary);">{env['python']}</span></p>
-  <p style="margin: 0.2rem 0; font-size: 0.75rem;"><b>PyTorch:</b> <span style="color: var(--text-secondary);">{env['torch']}</span></p>
-  <p style="margin: 0.2rem 0; font-size: 0.75rem;"><b>YOLO:</b> <span style="color: var(--text-secondary);">{env['ultralytics']}</span></p>
-</div>
-""", unsafe_allow_html=True)
-    
-    # Carrega recursos
-    model = load_model()
-    summary, results_df, _, _ = load_training_data()
-    
-    # Roteamento de páginas
-    if selected == "Home":
-        page_home(model, summary, results_df)
-    elif selected == "Detector":
-        page_detect(model)
-    elif selected == "Analytics":
-        page_training()
-    else:
-        page_about()
+        cv2.putText(
+            annotated,
+            label,
+            (x1 + 4, y1 - 4),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
+        )
+    return annotated
 
 
-if __name__ == "__main__":
-    main()
+def _encode_image(image_np: np.ndarray) -> str:
+    buffer = io.BytesIO()
+    Image.fromarray(image_np).save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+
+def _collect_sample_images() -> List[str]:
+    return [GITHUB_IMAGES_BASE + name for name in EXAMPLE_IMAGES]
+
+
+# ---------------------------------------------------------
+# FastAPI application
+# ---------------------------------------------------------
+app = FastAPI(
+    title="Brazilian License Plate Recognition API",
+    version="1.0.0",
+    description=(
+        "REST API that serves a YOLOv8 model trained to detect Brazilian Mercosul "
+        "license plates. Designed for Hugging Face Spaces deployment."
+    ),
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ---------------------------------------------------------
+# Routes
+# ---------------------------------------------------------
+@app.get("/", response_model=Dict[str, str])
+def root() -> Dict[str, str]:
+    return {
+        "message": "Brazilian License Plate Recognition API",
+        "docs_url": "/docs",
+        "health_url": "/health",
+    }
+
+
+@app.get("/health", response_model=HealthResponse, tags=["Utility"])
+def health_check() -> HealthResponse:
+    weights_available = DEFAULT_MODEL_PATH.exists() or (WEIGHTS_DIR / "last.pt").exists()
+    status = "ok" if weights_available else "missing-model"
+    model_path = str(_prepare_model_path()) if weights_available else None
+    return HealthResponse(
+        status=status,
+        model_path=model_path,
+        weights_available=weights_available,
+        detections_ready=weights_available,
+    )
+
+
+@app.get("/model/info", response_model=ModelMetrics, tags=["Model"])
+def model_info() -> ModelMetrics:
+    return get_model_metadata()
+
+
+@app.get("/samples", response_model=SamplesResponse, tags=["Utility"])
+def sample_images() -> SamplesResponse:
+    return SamplesResponse(images=_collect_sample_images())
+
+
+@app.post(
+    "/v1/detect",
+    response_model=DetectionResponse,
+    tags=["Detection"],
+    summary="Detect license plates in an image",
+)
+async def detect_license_plate(
+    file: UploadFile = File(..., description="Image file (PNG or JPEG)"),
+    confidence: float = Query(
+        0.25,
+        ge=0.01,
+        le=0.99,
+        description="Confidence threshold passed to YOLO.",
+    ),
+    iou: float = Query(
+        0.5,
+        ge=0.05,
+        le=0.95,
+        description="IoU threshold used during non-maximum suppression.",
+    ),
+    image_size: int = Query(
+        768,
+        ge=320,
+        le=1280,
+        description="Square image size used by YOLO during inference.",
+    ),
+    return_image: bool = Query(
+        False,
+        description="If true, returns an annotated PNG encoded as base64.",
+    ),
+) -> DetectionResponse:
+    if file.content_type not in {"image/png", "image/jpeg", "image/jpg"}:
+        raise HTTPException(status_code=415, detail="Unsupported file type.")
+
+    image_bytes = await file.read()
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="Empty file received.")
+
+    pil_image = _load_image(image_bytes)
+    width, height = pil_image.size
+
+    try:
+        weights_path = _prepare_model_path()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail="Model weights not available.") from exc
+    model = get_model()
+    start_time = time.perf_counter()
+
+    try:
+        results = model.predict(
+            np.array(pil_image),
+            conf=confidence,
+            iou=iou,
+            imgsz=image_size,
+            verbose=False,
+        )
+    except Exception as exc:  # pylint: disable=broad-except
+        raise HTTPException(status_code=500, detail="Model inference failed.") from exc
+
+    inference_time_ms = (time.perf_counter() - start_time) * 1000.0
+
+    detections: List[Detection] = []
+    annotated_image_base64: Optional[str] = None
+
+    if results:
+        first_result = results[0]
+        names = first_result.names
+        boxes = first_result.boxes
+
+        if boxes is not None and len(boxes) > 0:
+            xyxy = boxes.xyxy.cpu().numpy()
+            confs = boxes.conf.cpu().numpy()
+            classes = boxes.cls.cpu().numpy().astype(int)
+
+            for idx, (bbox, conf_val, cls_val) in enumerate(zip(xyxy, confs, classes)):
+                x1, y1, x2, y2 = bbox.astype(float)
+                box_width = max(0, x2 - x1)
+                box_height = max(0, y2 - y1)
+                detections.append(
+                    Detection(
+                        id=idx,
+                        class_id=int(cls_val),
+                        class_name=str(names.get(int(cls_val), "plate")),
+                        confidence=float(conf_val),
+                        box=BoundingBox(
+                            xmin=int(round(x1)),
+                            ymin=int(round(y1)),
+                            xmax=int(round(x2)),
+                            ymax=int(round(y2)),
+                            width=int(round(box_width)),
+                            height=int(round(box_height)),
+                            xmin_norm=float(np.clip(x1 / width, 0.0, 1.0)),
+                            ymin_norm=float(np.clip(y1 / height, 0.0, 1.0)),
+                            xmax_norm=float(np.clip(x2 / width, 0.0, 1.0)),
+                            ymax_norm=float(np.clip(y2 / height, 0.0, 1.0)),
+                        ),
+                    )
+                )
+
+            if return_image:
+                annotated = _draw_boxes(
+                    np.array(pil_image),
+                    xyxy,
+                    confs,
+                )
+                annotated_image_base64 = _encode_image(annotated)
+
+    return DetectionResponse(
+        detections=detections,
+        image=ImageInfo(width=width, height=height, mode=pil_image.mode),
+        performance=PerformanceInfo(
+            inference_time_ms=inference_time_ms,
+            model_name=weights_path.name,
+            framework_version=str(getattr(model, "version", "unknown")),
+        ),
+        annotated_image_base64=annotated_image_base64,
+    )
+

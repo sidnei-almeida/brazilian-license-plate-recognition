@@ -1,394 +1,167 @@
-# 🚗 Brazilian License Plate Recognition System
+---
+title: Brazilian License Plate Recognition API
+emoji: 🚗
+colorFrom: blue
+colorTo: orange
+sdk: docker
+pinned: false
+license: mit
+---
 
-<div align="center">
+# Brazilian License Plate Recognition API
 
-[![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](https://python.org)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)](https://streamlit.io)
-[![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-orange.svg)](https://github.com/ultralytics/ultralytics)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+REST API for detecting Brazilian Mercosul license plates using a fine-tuned YOLOv8 model.  
+This repository targets Hugging Face Spaces (Docker runtime) and serves as the backend for a custom front-end experience.
 
-[![GitHub](https://img.shields.io/badge/GitHub-sidnei--almeida-181717?logo=github)](https://github.com/sidnei-almeida)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-saaelmeida93-0A66C2?logo=linkedin)](https://www.linkedin.com/in/saaelmeida93/)
+## Features
+- YOLOv8 small model trained for Brazilian Mercosul plates.
+- Single endpoint (`POST /v1/detect`) to run inference on user-supplied images.
+- Optional return of annotated images (PNG, base64 encoded).
+- Health, metadata, and sample utilities for front-end integration.
+- Containerized deployment flow tailored for Hugging Face Spaces.
 
-</div>
-
-## 📋 Project Description
-
-Advanced **Automatic License Plate Recognition (ALPR)** system developed specifically for Brazilian license plates, including the Mercosul standard. Uses a custom-trained YOLOv8 model with high precision to detect plates in vehicle images.
-
-## ✨ Key Features
-
-- 🔍 **Plate Detection**: YOLOv8 model optimized for Brazilian plates
-- 🚗 **Mercosul Standard**: Full support for the new Brazilian plate format
-- 📊 **Interactive Interface**: Streamlit application with advanced visualizations
-- 📈 **Performance Analysis**: Detailed metrics and interactive charts
-- 🧪 **Real-Time Testing**: Interface to test the model with your own images
-- 📱 **Back Camera Input**: Specifically use your back camera for real-time detection
-- 📚 **Complete Documentation**: Detailed usage and development guides
-
-## 🏗️ System Architecture
-
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Interface     │    │   Modelo YOLOv8  │    │   Image         │
-│   Streamlit     │───▶│   Trained        │──▶│   Processing    │
-│                 │    │                  │    │                 │
-│ - Navigation    │    │ - Detection      │    │ - Bounding      │
-│ - Visualizations│    │ - Classification │    │   Boxes         │
-│ - Testing       │    │ - Confidence     │    │ - Confidence    │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+## Quick Start
+```bash
+git clone https://github.com/sidnei-almeida/brazilian-license-plate-recognition.git
+cd brazilian-license-plate-recognition
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python setup.py  # installs dependencies if needed and starts uvicorn
 ```
 
-## 📊 Model Performance
+The API listens on `http://127.0.0.1:7860` and exposes interactive docs at `http://127.0.0.1:7860/docs`.
 
-### Training Metrics
-- **Precision**: 99.69%
-- **Recall**: 99.19%
-- **mAP@50**: 99.49%
-- **mAP@50-95**: 95.56%
-- **Best Epoch**: 170/300
+## Project Structure
+```
+.
+├── app.py                     # FastAPI application entrypoint
+├── Dockerfile                 # Hugging Face Space definition (docker runtime)
+├── requirements.txt           # Python dependencies (CPU-friendly)
+├── packages.txt               # System dependency manifest (mirrors Dockerfile apt installs)
+├── setup.py                   # Helper script to validate environment and run server
+├── plate_detector_v1/         # Model assets
+│   ├── weights/
+│   │   ├── best.pt            # Primary YOLO weights (required)
+│   │   └── last.pt            # Fallback weights
+│   ├── args.yaml              # Training configuration snapshot
+│   ├── results.csv            # Training metrics per epoch
+│   └── *.png                  # Training visualizations
+├── plate_detector_v1_summary.json
+├── images/                    # Sample Mercosul plate photographs
+└── notebooks/                 # Training notebooks (reference only)
+```
 
-### Resources Used
-- **Base Model**: YOLOv8s (Small)
-- **Dataset**: Specialized for Brazilian plates
-- **Training Epochs**: 300 (with early stopping)
-- **Batch Size**: 16
-- **Image Size**: 640x640
+## API Overview
 
-## 🚀 Installation and Execution
+| Method | Path          | Description                                           |
+|--------|---------------|-------------------------------------------------------|
+| GET    | `/`           | Basic welcome payload with links to docs and health. |
+| GET    | `/health`     | Checks for model availability and readiness.         |
+| GET    | `/model/info` | Returns metrics found in `plate_detector_v1_summary.json`. |
+| GET    | `/samples`    | Lists sample image URLs hosted on GitHub.            |
+| POST   | `/v1/detect`  | Runs inference on an uploaded image.                 |
 
-### Prerequisites
+### Detection Request
+- **Content-Type**: `multipart/form-data`
+- **File field**: `file` (PNG or JPEG)
+- **Query parameters** (optional):
+  - `confidence` (`float`, default `0.25`, range `0.01-0.99`)
+  - `iou` (`float`, default `0.5`, range `0.05-0.95`)
+  - `image_size` (`int`, default `768`, range `320-1280`)
+  - `return_image` (`bool`, default `false`)
 
-- **Python 3.11+** (including 3.13)
-- **pip** (package manager)
-- **🌐 Streamlit Cloud** (recommended) or local environment
+### Detection Response (excerpt)
+```json
+{
+  "detections": [
+    {
+      "id": 0,
+      "class_id": 0,
+      "class_name": "plate",
+      "confidence": 0.93,
+      "box": {
+        "xmin": 215,
+        "ymin": 142,
+        "xmax": 398,
+        "ymax": 220,
+        "width": 183,
+        "height": 78,
+        "xmin_norm": 0.34,
+        "ymin_norm": 0.28,
+        "xmax_norm": 0.63,
+        "ymax_norm": 0.43
+      }
+    }
+  ],
+  "image": {"width": 640, "height": 480, "mode": "RGB"},
+  "performance": {"inference_time_ms": 74.2, "model_name": "best.pt", "framework_version": "8.2.0"},
+  "annotated_image_base64": null
+}
+```
+If `return_image=true`, `annotated_image_base64` contains a base64-encoded PNG with bounding boxes and scores.
 
-### ⚡ Optimized Performance
+## Local Development
 
-This system has been specially optimized for **Streamlit Cloud**:
-
-- ✅ **CPU versions** of libraries (smaller size)
-- ✅ **No GPU required** for operation
-- ✅ **Direct deployment** on Streamlit Cloud
-- ✅ **Adequate performance** even with limited resources
-
-### Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/sidnei-almeida/brazilian-license-plate-recognition.git
-   cd brazilian-license-plate-recognition
-   ```
-
-2. **Create and activate virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Linux/Mac
-   # or
-   venv\Scripts\activate     # Windows
-   ```
-
-3. **Install dependencies:**
+1. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Run the application:**
+2. **Ensure model weights**
+   Place `best.pt` inside `plate_detector_v1/weights/` (already included in this repo). `last.pt` can act as fallback.
+
+3. **Run tests manually**
    ```bash
-   streamlit run app.py
+   uvicorn app:app --reload --host 0.0.0.0 --port 7860
    ```
 
-5. **Access in browser:**
-   Open `http://localhost:8501` to view the application.
-
-### 🚀 Deploy to Streamlit Cloud (Recommended)
-
-To deploy for free on Streamlit Cloud:
-
-1. **Fork** this repository on GitHub
-2. **Visit** [share.streamlit.io](https://share.streamlit.io)
-3. **Connect** your GitHub repository
-4. **Configure**:
-   - **Main file path**: `app.py`
-   - **Python version**: 3.13
-   - **Requirements**: already included in `requirements.txt`
-   - **System packages**: already included in `packages.txt`
-5. **Deploy!** - The system will work perfectly in the cloud
-
-> 💡 **Important notes**:
-> - ✅ Test images are automatically loaded from GitHub
-> - ✅ The `packages.txt` installs system dependencies required for OpenCV
-> - ✅ `opencv-python-headless` is used to avoid conflicts on Streamlit Cloud
-> - ✅ Uses `streamlit-back-camera-input` for specific access to the back camera
-> - ✅ The back camera is specifically used for better license plate detection quality
-> - ✅ Correct syntax: `back_camera_input(key="key_name")` without additional parameters
-
-## ⚡ Performance
-
-### Optimized for Streamlit Cloud
-
-| Environment | Inference Time | Resources | Status |
-|-------------|----------------|-----------|--------|
-| **Streamlit Cloud** | ~3-8 seconds | Shared CPU | ✅ **Optimized** |
-| **Local Development** | ~2-5 seconds | Local CPU | ✅ Supported |
-| **Local GPU** | ~0.5-2 seconds | NVIDIA GPU | ⚠️ Optional |
-
-### Applied Optimizations
-
-- ✅ **CPU Optimized**: Lightweight library versions
-- ✅ **Memory Efficient**: Optimized RAM usage
-- ✅ **Streamlit Cloud Ready**: Direct deployment without configurations
-- ✅ **Smart Caching**: Pre-loaded model to reduce latency
-- ✅ **Batch Processing**: Efficient processing for limited resources
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-**❌ "Model not found"**
-- Make sure the `plate_detector_v1/weights/` folder exists
-- Check if the `best.pt` file is present
-
-**❌ "Import error for torch/ultralytics"**
-```bash
-# Reinstall dependencies:
-pip uninstall torch torchvision torchaudio ultralytics
-pip install -r requirements.txt
-```
-
-**❌ "Insufficient memory on Streamlit Cloud"**
-- The system is optimized to work with limited resources
-- If necessary, use smaller images (the model accepts up to 640x640)
-
-**❌ "Slow processing"**
-- On Streamlit Cloud: ~3-8 seconds per image (normal)
-- Locally: ~2-5 seconds per image (CPU)
-- To speed up: consider using local GPU (optional)
-
-### CPU Performance
-
-The system works perfectly with CPU:
-- **Streamlit Cloud**: 3-8 seconds per image
-- **Local development**: 2-5 seconds per image
-- **RAM**: ~2-4GB required
-
-### Logs and Debug
-
-To enable detailed logs in the code:
-```python
-import logging
-logging.basicConfig(level=logging.INFO)
-```
-
-## 📁 Project Structure
-
-```
-brazilian-license-plate-recognition/
-│
-├── 📁 images/                          # Test images
-│   ├── DCAM0015_JPG_jpg.rf.72c8...jpg
-│   ├── DCAM0019_JPG_jpg.rf.4fe1...jpg
-│   └── ...
-│
-├── 📁 plate_detector_v1/               # Trained model
-│   ├── weights/
-│   │   ├── best.pt                     # Best model
-│   │   └── last.pt                     # Last model
-│   ├── args.yaml                       # Hyperparameters
-│   ├── results.csv                     # Metrics per epoch
-│   └── results.png                     # Results chart
-│
-├── 📁 notebooks/                       # Training notebooks
-│   └── 1_YOLOv8_Training_Brazilian_Plates.ipynb
-│
-├── 📄 app.py                           # Main Streamlit application
-├── 📄 requirements.txt                 # Python dependencies
-├── 📄 README.md                        # This file
-└── 📄 plate_detector_v1_summary.json   # Training summary
-```
-
-## 🎯 How to Use
-
-### 1. Home Page
-- System overview
-- Key features
-- Results chart do treinamento
-
-### 2. Model Testing
-- **Visual Selector**: Choose images using `streamlit-image-select`
-- **Detection**: Click "Detect Plates" to process
-- **Results**: View bounding boxes and confidence levels
-
-### 3. Results Analysis
-- **Metrics**: Cards with main performance indicators
-- **Interactive Charts**: Metric evolution during training
-- **Loss Analysis**: Detailed training curves
-
-### 4. About the Model
-- **Architecture**: Technical details of YOLOv8
-- **Hyperparameters**: Settings used in training
-- **Process**: Step-by-step explanation of detection
-
-### 5. About the Data
-- **Dataset**: Training set characteristics
-- **Plate Types**: Examples of different formats
-- **Test Images**: Gallery of available images
-
-## 🛠️ Development
-
-### YOLOv8 Model Architecture
-
-The model uses the YOLOv8 architecture with the following features:
-
-- **Backbone**: Modified CSPDarknet53
-- **Neck**: PAN (Path Aggregation Network)
-- **Head**: YOLOv8 detection head
-- **Size**: "small" variant (YOLOv8s)
-
-### Training Process
-
-1. **Data Preparation**: Dataset formatted in YOLO standard
-2. **Configuration**: Hyperparameter definition
-3. **Training**: 300 epochs with early stopping
-4. **Validation**: Evaluation on validation set
-5. **Optimization**: Best model selection
-
-### Metrics Used
-
-- **Precision**: Fraction of correct detections
-- **Recall**: Fraction of real plates detected
-- **mAP@50**: Mean Average Precision (IoU ≥ 0.5)
-- **mAP@50-95**: Mean Average Precision (average IoU 0.5-0.95)
-
-## 🔧 Customization
-
-### Test Images
-
-**✅ Test images are automatically loaded from GitHub!**
-
-- The system loads images directly from the repository
-- No need to have images locally
-- Works perfectly on Streamlit Cloud
-- Automatic cache for better performance
-
-### Add New Images
-
-To add your own test images:
-
-1. Upload via interface **"Upload"** in the Detector tab
-2. Or, to add permanently:
-   - Place your images in the folder `images/`
-    - Add file names to the list `EXAMPLE_IMAGES` in `app.py`
-   - Commit to GitHub
-3. Images appear automatically in the selector
-
-### Use Back Camera for Detection
-
-To specifically use your **back camera** to detect plates:
-
-1. **Access the "Camera" tab** in the Detector section
-2. **Allow camera access** when requested by the browser
-3. **The application automatically uses your back camera** (ideal for plates)
-4. **Point the camera** at a Brazilian license plate and take a photo
-5. **Click "Detect Plates"** to analyze the captured image
-6. **View the results** with bounding boxes and detection details
-
-> 💡 **Note**: Detection quality depends on lighting and plate angle. The back camera is perfect for capturing plates at a distance.
-
-### Adjust Model Parameters
-
-To modify the minimum confidence or other parameters:
-
-```python
-# In app.py, line 54
-results = model(image, conf=0.5)  # Adjust the threshold here
-```
-
-## 🔧 Troubleshooting
-
-### Error: `ImportError: libGL.so.1: cannot open shared object file`
-
-This error occurs when OpenCV cannot find the system graphics libraries. **Solution:**
-
-1. **No Streamlit Cloud**: The `packages.txt` file is already configured to install the necessary dependencies
-2. **Locally (Linux)**:
+4. **Use the API**
    ```bash
-   sudo apt-get update
-   sudo apt-get install -y libgl1-mesa-glx libglib2.0-0
+   curl -X POST "http://127.0.0.1:7860/v1/detect" \
+     -F "file=@images/DCAM0015_JPG_jpg.rf.72c86340f8f15c0a24c50bde98fa8f57.jpg"
    ```
-3. **Locally (Mac)**: Not needed, already works natively
-4. **Locally (Windows)**: Not needed, already works natively
 
-### Error: Conflict between `opencv-python` and `opencv-python-headless`
+## Docker & Hugging Face Deployment
 
-**Solution:** The `requirements.txt` is already configured to install `opencv-python-headless` before `ultralytics`, avoiding conflicts.
+Hugging Face Spaces (Docker runtime) automatically builds the image using the provided `Dockerfile`.
 
-### Error: `back_camera_input() got an unexpected keyword argument 'help'`
+### Dockerfile Highlights
+- Based on `python:3.11-slim`.
+- Installs system packages required by OpenCV (`packages.txt` content).
+- Installs dependencies from `requirements.txt`.
+- Sets `PORT=7860` and launches `uvicorn app:app`.
 
-**Cause:** The `streamlit-back-camera-input` component does not accept the `help` parameter.
+### Deploying on Hugging Face
+1. Create a new Space with **SDK = Docker**.
+2. Push this repository (including weights) to the Space.
+3. Hugging Face builds and runs the container automatically.
+4. The API will be available at `https://<space-name>.hf.space/v1/detect`.
 
-**Solution:** Use only the `key` parameter:
-```python
-camera_image = back_camera_input(key="back_camera_input")
-```
+## Model Summary
 
-### Deploy hanging on Streamlit Cloud
+- **Architecture**: YOLOv8s (small)
+- **Dataset**: Vehicles with Brazilian Mercosul plates
+- **Epochs**: 300 (early stopping around epoch 170)
+- **Metrics** (from `plate_detector_v1_summary.json`):
+  - Precision: ~99.7%
+  - Recall: ~99.2%
+  - mAP@50: ~99.5%
+  - mAP@50-95: ~95.6%
 
-**Possible causes:**
-- Model size too large
-- Lack of memory during installation
+## Front-End Integration Tips
+- Use `GET /samples` to bootstrap a gallery of test images.
+- Use normalized box coordinates (`xmin_norm`, `ymin_norm`, `xmax_norm`, `ymax_norm`) to draw overlays independent of resizing.
+- Latency is measured per request and returned as `inference_time_ms`.
+- When requesting the annotated image, decode the base64 string into a PNG and display or store it directly.
 
-**Solution:** The repository is already optimized with CPU versions of libraries, which are smaller and faster to install.
+## License
+Distributed under the MIT License. See `LICENSE` for details.
 
-## 📈 Future Improvements
+## Acknowledgements
+- [Ultralytics](https://github.com/ultralytics/ultralytics) for YOLOv8.
+- Brazilian plate dataset contributors.
 
-- [ ] OCR integration for character reading
-- [ ] Real-time video support
-- [ ] REST API for integration with other systems
-- [ ] Complementary mobile app
-- [ ] Additional model optimization for edge devices
-
-## 🤝 Contributing
-
-Contributions are welcome! Follow these steps:
-
-1. Fork the project
-2. Create a branch for your feature (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is under the MIT license. See the `LICENSE` file for more details.
-
-## 👨‍💻 Author
-
-<div align="center">
-
-**Sidnei Almeida**
-
-[![GitHub](https://img.shields.io/badge/GitHub-sidnei--almeida-181717?style=for-the-badge&logo=github)](https://github.com/sidnei-almeida)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-saaelmeida93-0A66C2?style=for-the-badge&logo=linkedin)](https://www.linkedin.com/in/saaelmeida93/)
-
-Developer specialized in Machine Learning and Computer Vision
-
-</div>
-
-## 🙏 Acknowledgments
-
-- **Ultralytics**: YOLOv8 developers
-- **Streamlit**: Framework for creating the interface
-- **Python Community**: For exceptional libraries and tools
-
-## 📞 Support
-
-For support and questions:
-
-- 💬 Open an [Issue](https://github.com/sidnei-almeida/brazilian-license-plate-recognition/issues)
-- 💼 Contact via [LinkedIn](https://www.linkedin.com/in/saaelmeida93/)
-- 📧 Discussions on [GitHub Discussions](https://github.com/sidnei-almeida/brazilian-license-plate-recognition/discussions)
-
----
-
-⭐ **If this project was useful to you, consider giving it a star!** ⭐
+## Support
+- Create an [issue](https://github.com/sidnei-almeida/brazilian-license-plate-recognition/issues) for bugs or questions.
+- Connect on [LinkedIn](https://www.linkedin.com/in/saaelmeida93/).

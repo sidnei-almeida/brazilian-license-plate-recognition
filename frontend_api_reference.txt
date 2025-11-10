@@ -1,0 +1,135 @@
+Brazilian License Plate Recognition API
+======================================
+
+Base URL
+--------
+- Production (Hugging Face Space): `https://<space-name>.hf.space`
+- Local development: `http://127.0.0.1:7860`
+
+Authentication
+--------------
+- No authentication required.
+- All endpoints are public; rate limiting should be implemented client-side if needed.
+
+HTTP Endpoints
+--------------
+
+1. `GET /`
+   - Purpose: Quick status message and links to docs/health.
+   - Response:
+     ```json
+     {
+       "message": "Brazilian License Plate Recognition API",
+       "docs_url": "/docs",
+       "health_url": "/health"
+     }
+     ```
+
+2. `GET /health`
+   - Purpose: Check model readiness.
+   - Response:
+     ```json
+     {
+       "status": "ok",
+       "model_path": "/code/plate_detector_v1/weights/best.pt",
+       "weights_available": true,
+       "detections_ready": true
+     }
+     ```
+   - `status` values: `ok`, `missing-model`.
+
+3. `GET /model/info`
+   - Purpose: Retrieve training metrics and configuration.
+   - Example response:
+     ```json
+     {
+       "model_name": "YOLOv8",
+       "metrics": {
+         "precision(B)": 0.9969,
+         "recall(B)": 0.9919,
+         "mAP50(B)": 0.9949,
+         "mAP50-95(B)": 0.9556
+       },
+       "training_settings": {
+         "epochs": "300",
+         "imgsz": "640",
+         "batch": "16"
+       }
+     }
+     ```
+
+4. `GET /samples`
+   - Purpose: Provide demo image URLs hosted on GitHub (useful for galleries).
+   - Example response:
+     ```json
+     {
+       "images": [
+         "https://raw.githubusercontent.com/sidnei-almeida/brazilian-license-plate-recognition/main/images/DCAM0015_JPG_jpg.rf.72c86340f8f15c0a24c50bde98fa8f57.jpg",
+         "... up to 10 items ..."
+       ]
+     }
+     ```
+
+5. `POST /v1/detect`
+   - Purpose: Run inference on a single image.
+   - Content-Type: `multipart/form-data`
+   - Body:
+     - File field `file`: PNG/JPEG image.
+   - Query parameters (optional):
+     - `confidence` (float, default `0.25`, range `0.01-0.99`)
+     - `iou` (float, default `0.5`, range `0.05-0.95`)
+     - `image_size` (int, default `768`, allowed `320-1280`)
+     - `return_image` (bool, default `false`)
+   - Successful response:
+     ```json
+     {
+       "detections": [
+         {
+           "id": 0,
+           "class_id": 0,
+           "class_name": "plate",
+           "confidence": 0.93,
+           "box": {
+             "xmin": 215,
+             "ymin": 142,
+             "xmax": 398,
+             "ymax": 220,
+             "width": 183,
+             "height": 78,
+             "xmin_norm": 0.34,
+             "ymin_norm": 0.28,
+             "xmax_norm": 0.63,
+             "ymax_norm": 0.43
+           }
+         }
+       ],
+       "image": {
+         "width": 640,
+         "height": 480,
+         "mode": "RGB"
+       },
+       "performance": {
+         "inference_time_ms": 74.2,
+         "model_name": "best.pt",
+         "framework_version": "8.2.0"
+       },
+       "annotated_image_base64": null
+     }
+     ```
+   - When `return_image=true`, `annotated_image_base64` holds a base64-encoded PNG; prepend with `data:image/png;base64,` when rendering in HTML.
+
+Front-End Recommendations
+--------------------------
+- Use `fetch` or `axios` with `FormData` for POST `/v1/detect`.
+- Display detection boxes using either absolute pixel coordinates or normalized ratios (`xmin_norm`, etc.) to remain resolution-independent.
+- Cache sample images from `GET /samples` for offline demos.
+- Show inference latency (`performance.inference_time_ms`) as part of the UX.
+- Handle `415` errors (unsupported media type) to warn about invalid uploads.
+- Provide user feedback when `detections` is empty (no plates found).
+
+Performance Notes
+-----------------
+- Expected latency: 70–200 ms on Spaces CPU (depends on image size).
+- Model is CPU-only; GPU is not required.
+- Recommended image dimensions ≤ 1920 px on the longest side for optimal performance.
+

@@ -1,35 +1,21 @@
-# Core dependencies (compatível com Python 3.11-3.13)
-streamlit
-numpy
-pandas
-pillow
+# API framework
+fastapi
+uvicorn[standard]
+python-multipart
 
-# Machine Learning & Computer Vision (CPU Optimized for Streamlit Cloud)
-# ✅ Versões CPU-only - SEM CUDA - Otimizado para Streamlit Cloud
-# PyTorch será instalado separadamente com --extra-index-url
+# Core machine-learning stack (CPU build)
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision
 torchaudio
 
-# 📦 Para desenvolvimento local com GPU (opcional):
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# OpenCV headless (ANTES do ultralytics para evitar conflitos)
+# Computer vision utilities
 opencv-python-headless
+Pillow
+numpy
 
-# YOLO - ultralytics pode tentar instalar opencv-python, mas opencv-python-headless já estará instalado
+# YOLO model
 ultralytics
 
-# Data Visualization
-plotly
-plotly-express
-
-# Streamlit Extensions
-streamlit-image-select
-streamlit-option-menu
-streamlit-back-camera-input
-
-# Utilities
-python-dotenv
-watchdog
+# Hugging Face integration
+huggingface-hub
