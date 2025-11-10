@@ -1,0 +1,21 @@
+# API framework
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Core machine-learning stack (CPU build)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+torchaudio
+
+# Computer vision utilities
+opencv-python-headless
+Pillow
+numpy
+
+# YOLO model
+ultralytics
+
+# Hugging Face integration
+huggingface-hub
