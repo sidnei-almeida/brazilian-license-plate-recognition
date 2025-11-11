@@ -1,0 +1,22 @@
+# Ignore Git repository
+.git/
+
+# Ignore virtual environments
+.venv/
+venv/
+env/
+
+# Ignore Python caches
+__pycache__/
+*.pyc
+.cache/
+
+# Ignore machine learning models and datasets
+*.pt
+*.pth
+*.h5
+*.safetensors
+data/
+images/
+runs/
+

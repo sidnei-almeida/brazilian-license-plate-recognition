@@ -1,7 +1,6 @@
 import base64
 import io
 import json
-import os
 import time
 from functools import lru_cache
 from pathlib import Path
@@ -20,9 +19,7 @@ from ultralytics import YOLO
 # ---------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
 WEIGHTS_DIR = BASE_DIR / "plate_detector_v1" / "weights"
-DEFAULT_MODEL_PATH = Path(
-    os.getenv("MODEL_WEIGHTS_PATH", WEIGHTS_DIR / "best.pt")
-)
+DEFAULT_MODEL_PATH = WEIGHTS_DIR / "best.pt"
 SUMMARY_PATH = BASE_DIR / "plate_detector_v1_summary.json"
 
 GITHUB_USER = "sidnei-almeida"
@@ -108,21 +105,23 @@ class SamplesResponse(BaseModel):
 # ---------------------------------------------------------
 # Utility functions
 # ---------------------------------------------------------
-def _prepare_model_path() -> Path:
-    if DEFAULT_MODEL_PATH.exists():
-        return DEFAULT_MODEL_PATH
-    fallback = WEIGHTS_DIR / "last.pt"
-    if fallback.exists():
+def _prepare_model_path() -> str:
+    primary = "plate_detector_v1/weights/best.pt"
+    if (BASE_DIR / primary).exists():
+        return primary
+    fallback = "plate_detector_v1/weights/last.pt"
+    if (BASE_DIR / fallback).exists():
         return fallback
     raise FileNotFoundError(
-        f"Model weights not found. Expected at {DEFAULT_MODEL_PATH} or {fallback}"
+        "Model weights not found. Expected at plate_detector_v1/weights/best.pt "
+        "or plate_detector_v1/weights/last.pt."
     )
 
 
 @lru_cache(maxsize=1)
 def get_model() -> YOLO:
     model_path = _prepare_model_path()
-    model = YOLO(str(model_path))
+    model = YOLO(model_path)
     model.to("cpu")
     return model
 

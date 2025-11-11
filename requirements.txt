@@ -10,7 +10,6 @@ torchvision
 torchaudio
 
 # Computer vision utilities
-opencv-python-headless
 Pillow
 numpy
 

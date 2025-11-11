@@ -17,7 +17,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY . .
 
-ENV MODEL_WEIGHTS_PATH=/code/plate_detector_v1/weights/best.pt
 ENV PORT=7860
 
 EXPOSE 7860
