@@ -365,7 +365,7 @@ async def detect_license_plate(
         image=ImageInfo(width=width, height=height, mode=pil_image.mode),
         performance=PerformanceInfo(
             inference_time_ms=inference_time_ms,
-            model_name=weights_path.name,
+            model_name=Path(weights_path).name,
             framework_version=str(getattr(model, "version", "unknown")),
         ),
         annotated_image_base64=annotated_image_base64,
