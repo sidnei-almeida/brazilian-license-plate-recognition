@@ -18,9 +18,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . .
 
 ENV MODEL_WEIGHTS_PATH=/code/plate_detector_v1/weights/best.pt
-ENV PORT=7860
+ENV PORT=8000
 
-EXPOSE 7860
+EXPOSE 8000
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}"]
 

@@ -111,11 +111,11 @@ class SamplesResponse(BaseModel):
 def _prepare_model_path() -> Path:
     if DEFAULT_MODEL_PATH.exists():
         return DEFAULT_MODEL_PATH
-    fallback = WEIGHTS_DIR / "last.pt"
-    if fallback.exists():
-        return fallback
+    available = sorted(WEIGHTS_DIR.glob("*.pt"))
+    if available:
+        return available[0]
     raise FileNotFoundError(
-        f"Model weights not found. Expected at {DEFAULT_MODEL_PATH} or {fallback}"
+        f"Model weights not found. Expected at {DEFAULT_MODEL_PATH} or any *.pt file under {WEIGHTS_DIR}"
     )
 
 
@@ -205,8 +205,8 @@ app = FastAPI(
     title="Brazilian License Plate Recognition API",
     version="1.0.0",
     description=(
-        "REST API that serves a YOLOv8 model trained to detect Brazilian Mercosul "
-        "license plates. Designed for Hugging Face Spaces deployment."
+        "REST API que expõe um modelo YOLOv8 treinado para detectar placas Mercosul "
+        "brasileiras. Pronto para implantação em plataformas de container como Render."
     ),
 )
 

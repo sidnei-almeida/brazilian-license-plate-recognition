@@ -11,14 +11,14 @@ license: mit
 # Brazilian License Plate Recognition API
 
 REST API for detecting Brazilian Mercosul license plates using a fine-tuned YOLOv8 model.  
-This repository targets Hugging Face Spaces (Docker runtime) and serves as the backend for a custom front-end experience.
+This repository is optimized for container-based deployments (Render by default) and can serve as the backend for any custom front end.
 
 ## Features
 - YOLOv8 small model trained for Brazilian Mercosul plates.
 - Single endpoint (`POST /v1/detect`) to run inference on user-supplied images.
 - Optional return of annotated images (PNG, base64 encoded).
 - Health, metadata, and sample utilities for front-end integration.
-- Containerized deployment flow tailored for Hugging Face Spaces.
+- Containerized deployment flow set up for Render Web Services.
 
 ## Quick Start
 ```bash
@@ -30,20 +30,20 @@ pip install -r requirements.txt
 python setup.py  # installs dependencies if needed and starts uvicorn
 ```
 
-The API listens on `http://127.0.0.1:7860` and exposes interactive docs at `http://127.0.0.1:7860/docs`.
+The API listens on `http://127.0.0.1:8000` (configurable via `PORT`) and exposes interactive docs at `http://127.0.0.1:8000/docs`.
 
 ## Project Structure
 ```
 .
 ├── app.py                     # FastAPI application entrypoint
-├── Dockerfile                 # Hugging Face Space definition (docker runtime)
+├── Dockerfile                 # Container definition
+├── render.yaml                # Render web service configuration
 ├── requirements.txt           # Python dependencies (CPU-friendly)
 ├── packages.txt               # System dependency manifest (mirrors Dockerfile apt installs)
 ├── setup.py                   # Helper script to validate environment and run server
 ├── plate_detector_v1/         # Model assets
 │   ├── weights/
-│   │   ├── best.pt            # Primary YOLO weights (required)
-│   │   └── last.pt            # Fallback weights
+│   │   └── best.pt            # Primary YOLO weights (required)
 │   ├── args.yaml              # Training configuration snapshot
 │   ├── results.csv            # Training metrics per epoch
 │   └── *.png                  # Training visualizations
@@ -109,34 +109,36 @@ If `return_image=true`, `annotated_image_base64` contains a base64-encoded PNG w
    ```
 
 2. **Ensure model weights**
-   Place `best.pt` inside `plate_detector_v1/weights/` (already included in this repo). `last.pt` can act as fallback.
+   Place `best.pt` inside `plate_detector_v1/weights/` (already included in this repo).
 
 3. **Run tests manually**
    ```bash
-   uvicorn app:app --reload --host 0.0.0.0 --port 7860
+   uvicorn app:app --reload --host 0.0.0.0 --port 8000
    ```
 
 4. **Use the API**
    ```bash
-   curl -X POST "http://127.0.0.1:7860/v1/detect" \
+   curl -X POST "http://127.0.0.1:8000/v1/detect" \
      -F "file=@images/DCAM0015_JPG_jpg.rf.72c86340f8f15c0a24c50bde98fa8f57.jpg"
    ```
 
-## Docker & Hugging Face Deployment
+## Docker Deployment
 
-Hugging Face Spaces (Docker runtime) automatically builds the image using the provided `Dockerfile`.
+Use the provided `Dockerfile` to build locally or on any container platform; Render consumes this file automatically.
 
 ### Dockerfile Highlights
 - Based on `python:3.11-slim`.
 - Installs system packages required by OpenCV (`packages.txt` content).
 - Installs dependencies from `requirements.txt`.
-- Sets `PORT=7860` and launches `uvicorn app:app`.
+- Sets `PORT=8000` (overridable) and launches `uvicorn app:app`.
 
-### Deploying on Hugging Face
-1. Create a new Space with **SDK = Docker**.
-2. Push this repository (including weights) to the Space.
-3. Hugging Face builds and runs the container automatically.
-4. The API will be available at `https://<space-name>.hf.space/v1/detect`.
+### Deploying on Render
+1. Fork or push this repository to your GitHub account.
+2. Create a new **Web Service** on Render and connect it to the repository.
+3. Choose **Docker** as the environment; Render will detect `render.yaml` automatically.
+4. Keep the default build command (Render builds using the `Dockerfile`).
+5. The service will boot with the `PORT` injected by Render (defaults to `8000` locally).
+6. After deployment, the API will be available at `https://<service-name>.onrender.com/v1/detect`.
 
 ## Model Summary
 

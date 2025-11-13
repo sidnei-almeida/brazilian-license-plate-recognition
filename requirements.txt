@@ -16,6 +16,3 @@ numpy
 
 # YOLO model
 ultralytics
-
-# Hugging Face integration
-huggingface-hub

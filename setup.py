@@ -38,11 +38,11 @@ def ensure_requirements() -> None:
 def assert_model_weights() -> None:
     if WEIGHTS_PATH.exists():
         return
-    alt_path = WEIGHTS_PATH.parent / "last.pt"
-    if alt_path.exists():
+    alternatives = sorted(WEIGHTS_PATH.parent.glob("*.pt"))
+    if alternatives:
         return
     raise FileNotFoundError(
-        "Model weights were not found. Please place best.pt or last.pt inside "
+        "Model weights were not found. Please place ao menos um arquivo *.pt dentro de "
         f"{WEIGHTS_PATH.parent}"
     )
 
@@ -56,7 +56,7 @@ def run_server() -> None:
         "--host",
         "0.0.0.0",
         "--port",
-        os.getenv("PORT", "7860"),
+        os.getenv("PORT", "8000"),
     ]
     subprocess.check_call(command)
 

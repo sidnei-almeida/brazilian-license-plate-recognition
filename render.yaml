@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: brazilian-license-plate-recognition
+    env: docker
+    plan: free
+    dockerfilePath: Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: MODEL_WEIGHTS_PATH
+        value: /code/plate_detector_v1/weights/best.pt
+
