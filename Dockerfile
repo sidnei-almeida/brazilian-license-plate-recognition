@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . .
 
 ENV MODEL_WEIGHTS_PATH=/code/plate_detector_v1/weights/best.pt
+ENV ALPR_WEIGHTS_PATH=/code/license_plate_alpr/weights/best.pt
 ENV PORT=8000
 
 EXPOSE 8000

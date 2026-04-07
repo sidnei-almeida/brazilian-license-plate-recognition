@@ -10,160 +10,273 @@ license: mit
 
 # Brazilian License Plate Recognition API
 
-REST API for detecting Brazilian Mercosul license plates using a fine-tuned YOLOv8 model.  
-This repository is optimized for container-based deployments (Render by default) and can serve as the backend for any custom front end.
+A **FastAPI** REST service that **locates** Brazilian **Mercosul** license plates in an image and **reads the alphanumeric text** for each plate. It combines two trained **YOLOv8** models—a plate detector and a character-recognition (ALPR) model—behind a single inference endpoint.
+
+Designed for **container** deployment (Docker, Render, Hugging Face Spaces, Kubernetes) and straightforward integration with web or mobile clients.
+
+---
+
+## Overview
+
+| Layer | Role | Artifact |
+|--------|------|----------|
+| **Detection** | Finds one or more plates (bounding boxes + confidence) | `plate_detector_v1/weights/best.pt` |
+| **Reading (ALPR)** | Detects characters (0–9, A–Z), assigns them to a plate, and builds the string | `license_plate_alpr/weights/best.pt` |
+
+Reading first runs ALPR on the **full image** with **exclusive** character-to-plate assignment (expanded boxes; tie-break by distance to the plate center). If a plate still has no text, an optional **fallback** runs a second inference on that plate’s **crop** only.
+
+```mermaid
+flowchart LR
+  A[Uploaded image] --> B[YOLO detector]
+  B --> C[Plate boxes]
+  A --> D[YOLO ALPR - full image]
+  C --> E[Character to plate assignment]
+  D --> E
+  E --> F{Empty text?}
+  F -->|Yes| G[ALPR on crop - fallback]
+  F -->|No| H[JSON with box + plate_text]
+  G --> H
+```
+
+---
 
 ## Features
-- YOLOv8 small model trained for Brazilian Mercosul plates.
-- Single endpoint (`POST /v1/detect`) to run inference on user-supplied images.
-- Optional return of annotated images (PNG, base64 encoded).
-- Health, metadata, and sample utilities for front-end integration.
-- Containerized deployment flow set up for Render Web Services.
 
-## Quick Start
+- **Mercosul plate detection** with pixel boxes and normalized coordinates (`0–1`).
+- **YOLO-based OCR**: per-plate text (`plate_text`) and mean character confidence (`plate_text_confidence`).
+- **Multiple plates** in one image: one `detections` entry per plate.
+- **Optional annotated image** (`return_image=true`): Base64 PNG with labels.
+- **Interactive docs**: OpenAPI at `/docs`, ReDoc at `/redoc`.
+- **Health check** reporting both weight files (detector + ALPR).
+- **CPU-friendly**: PyTorch CPU + Ultralytics stack per `requirements.txt`.
+
+---
+
+## Requirements
+
+- Python **3.10+** (**3.11** recommended, as in Docker).
+- Detector weights at `plate_detector_v1/weights/best.pt` (or another `.pt` in that folder).
+- ALPR weights at `license_plate_alpr/weights/best.pt` (or another `.pt` in that folder).
+
+---
+
+## Quick start
+
 ```bash
 git clone https://github.com/sidnei-almeida/brazilian-license-plate-recognition.git
 cd brazilian-license-plate-recognition
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python setup.py  # installs dependencies if needed and starts uvicorn
+python setup.py             # validates environment and starts Uvicorn
 ```
 
-The API listens on `http://127.0.0.1:8000` (configurable via `PORT`) and exposes interactive docs at `http://127.0.0.1:8000/docs`.
+By default the server listens on `http://127.0.0.1:8000`. Set **`PORT`** to change the listen port (common on PaaS).
 
-## Project Structure
+**cURL example**
+
+```bash
+curl -s -X POST "http://127.0.0.1:8000/v1/detect?return_image=false" \
+  -H "Accept: application/json" \
+  -F "file=@images/your_photo.jpg" | jq .
+```
+
+---
+
+## Repository layout
+
 ```
 .
-├── app.py                     # FastAPI application entrypoint
-├── Dockerfile                 # Container definition
-├── render.yaml                # Render web service configuration
-├── requirements.txt           # Python dependencies (CPU-friendly)
-├── packages.txt               # System dependency manifest (mirrors Dockerfile apt installs)
-├── setup.py                   # Helper script to validate environment and run server
-├── plate_detector_v1/         # Model assets
-│   ├── weights/
-│   │   └── best.pt            # Primary YOLO weights (required)
-│   ├── args.yaml              # Training configuration snapshot
-│   ├── results.csv            # Training metrics per epoch
-│   └── *.png                  # Training visualizations
+├── app.py                          # FastAPI application
+├── Dockerfile
+├── render.yaml                     # Example Render Web Service
+├── requirements.txt
+├── packages.txt                    # apt package mirror (reference)
+├── setup.py                        # Helper to run the server
+├── plate_detector_v1/
+│   └── weights/best.pt             # Plate detector (YOLOv8)
+├── license_plate_alpr/
+│   └── weights/best.pt             # Character / ALPR model (YOLOv8)
 ├── plate_detector_v1_summary.json
-├── images/                    # Sample Mercosul plate photographs
-└── notebooks/                 # Training notebooks (reference only)
+├── images/                         # Sample images / local tests
+└── notebooks/                      # Training notebooks (reference)
 ```
 
-## API Overview
+---
 
-| Method | Path          | Description                                           |
-|--------|---------------|-------------------------------------------------------|
-| GET    | `/`           | Basic welcome payload with links to docs and health. |
-| GET    | `/health`     | Checks for model availability and readiness.         |
-| GET    | `/model/info` | Returns metrics found in `plate_detector_v1_summary.json`. |
-| GET    | `/samples`    | Lists sample image URLs hosted on GitHub.            |
-| POST   | `/v1/detect`  | Runs inference on an uploaded image.                 |
+## Environment variables
 
-### Detection Request
-- **Content-Type**: `multipart/form-data`
-- **File field**: `file` (PNG or JPEG)
-- **Query parameters** (optional):
-  - `confidence` (`float`, default `0.25`, range `0.01-0.99`)
-  - `iou` (`float`, default `0.5`, range `0.05-0.95`)
-  - `image_size` (`int`, default `768`, range `320-1280`)
-  - `return_image` (`bool`, default `false`)
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MODEL_WEIGHTS_PATH` | Absolute path to the **detector** `.pt` | `plate_detector_v1/weights/best.pt` (relative to project root) |
+| `ALPR_WEIGHTS_PATH` | Absolute path to the **ALPR** `.pt` | `license_plate_alpr/weights/best.pt` |
+| `PORT` | HTTP port for Uvicorn | `8000` |
 
-### Detection Response (excerpt)
+The repo **Dockerfile** sets `MODEL_WEIGHTS_PATH` and `ALPR_WEIGHTS_PATH` under `/code/...` inside the image.
+
+---
+
+## API
+
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/` | Welcome message and links to docs and health |
+| `GET` | `/health` | Service readiness and availability of **both** models |
+| `GET` | `/model/info` | Detector training metrics (`plate_detector_v1_summary.json`) |
+| `GET` | `/samples` | Example image URLs (GitHub-hosted) |
+| `POST` | `/v1/detect` | Plate detection + reading |
+
+### `POST /v1/detect`
+
+- **Content-Type:** `multipart/form-data`
+- **File field:** `file` (PNG or JPEG)
+
+#### Query parameters
+
+**Detector (plates)**
+
+| Parameter | Type | Default | Range | Description |
+|-----------|------|---------|-------|-------------|
+| `confidence` | float | `0.25` | 0.01–0.99 | YOLO detector confidence threshold |
+| `iou` | float | `0.5` | 0.05–0.95 | Detector NMS IoU |
+| `image_size` | int | `768` | 320–1280 | Square input size for the detector |
+| `return_image` | bool | `false` | — | If `true`, returns Base64 annotated PNG |
+
+**Reading (ALPR)**
+
+| Parameter | Type | Default | Range | Description |
+|-----------|------|---------|-------|-------------|
+| `read_plate` | bool | `true` | — | If `false`, detection only (no ALPR) |
+| `alpr_confidence` | float | `0.25` | 0.01–0.99 | Character YOLO confidence threshold |
+| `alpr_iou` | float | `0.5` | 0.05–0.95 | ALPR NMS IoU |
+| `alpr_image_size` | int | `640` | 320–1280 | ALPR input size |
+| `alpr_box_padding` | float | `0.12` | 0.0–0.45 | Relative box expansion when assigning characters to plates |
+| `alpr_crop_fallback` | bool | `true` | — | Second ALPR pass on the crop if the plate has no text |
+
+### Response (`200 OK`)
+
+Each `detections` item includes plate geometry and, when available, the read text.
+
 ```json
 {
   "detections": [
     {
       "id": 0,
       "class_id": 0,
-      "class_name": "plate",
-      "confidence": 0.93,
+      "class_name": "placa",
+      "confidence": 0.91,
       "box": {
-        "xmin": 215,
-        "ymin": 142,
-        "xmax": 398,
-        "ymax": 220,
-        "width": 183,
-        "height": 78,
-        "xmin_norm": 0.34,
-        "ymin_norm": 0.28,
-        "xmax_norm": 0.63,
-        "ymax_norm": 0.43
-      }
+        "xmin": 127,
+        "ymin": 187,
+        "xmax": 174,
+        "ymax": 208,
+        "width": 47,
+        "height": 21,
+        "xmin_norm": 0.397,
+        "ymin_norm": 0.586,
+        "xmax_norm": 0.543,
+        "ymax_norm": 0.651
+      },
+      "plate_text": "ABC1D23",
+      "plate_text_confidence": 0.72
     }
   ],
-  "image": {"width": 640, "height": 480, "mode": "RGB"},
-  "performance": {"inference_time_ms": 74.2, "model_name": "best.pt", "framework_version": "8.2.0"},
+  "image": {
+    "width": 640,
+    "height": 480,
+    "mode": "RGB"
+  },
+  "performance": {
+    "inference_time_ms": 620.5,
+    "model_name": "best.pt",
+    "framework_version": "8.x.x",
+    "detector_inference_time_ms": 520.0,
+    "alpr_inference_time_ms": 100.5,
+    "alpr_model_name": "license_plate_alpr/weights/best.pt"
+  },
   "annotated_image_base64": null
 }
 ```
-If `return_image=true`, `annotated_image_base64` contains a base64-encoded PNG with bounding boxes and scores.
 
-## Local Development
+- `inference_time_ms`: total request time (detector + ALPR, including crop fallbacks when used).
+- `plate_text` / `plate_text_confidence`: may be `null` if no valid characters are assigned to that plate.
 
-1. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### `GET /health`
 
-2. **Ensure model weights**
-   Place `best.pt` inside `plate_detector_v1/weights/` (already included in this repo).
+Example body when everything is available:
 
-3. **Run tests manually**
-   ```bash
-   uvicorn app:app --reload --host 0.0.0.0 --port 8000
-   ```
+```json
+{
+  "status": "ok",
+  "model_path": "/path/to/plate_detector_v1/weights/best.pt",
+  "weights_available": true,
+  "detections_ready": true,
+  "alpr_model_path": "/path/to/license_plate_alpr/weights/best.pt",
+  "alpr_weights_available": true,
+  "alpr_ready": true
+}
+```
 
-4. **Use the API**
-   ```bash
-   curl -X POST "http://127.0.0.1:8000/v1/detect" \
-     -F "file=@images/DCAM0015_JPG_jpg.rf.72c86340f8f15c0a24c50bde98fa8f57.jpg"
-   ```
+`status` may be `missing-model` if either expected weight file is missing.
 
-## Docker Deployment
+---
 
-Use the provided `Dockerfile` to build locally or on any container platform; Render consumes this file automatically.
+## Multiple plates and edge cases
 
-### Dockerfile Highlights
-- Based on `python:3.11-slim`.
-- Installs system packages required by OpenCV (`packages.txt` content).
-- Installs dependencies from `requirements.txt`.
-- Sets `PORT=8000` (overridable) and launches `uvicorn app:app`.
+- The detector may return **several** boxes in one photo; each becomes one `detections` entry.
+- **Distant** plates, **partial occlusion**, or **sticker-like** regions may produce extra boxes or empty reads; clients can filter by area, confidence, or UI rules.
+- `plate_text` quality depends on ALPR training, lighting, angle, and resolution.
 
-### Deploying on Render
-1. Fork or push this repository to your GitHub account.
-2. Create a new **Web Service** on Render and connect it to the repository.
-3. Choose **Docker** as the environment; Render will detect `render.yaml` automatically.
-4. Keep the default build command (Render builds using the `Dockerfile`).
-5. The service will boot with the `PORT` injected by Render (defaults to `8000` locally).
-6. After deployment, the API will be available at `https://<service-name>.onrender.com/v1/detect`.
+---
 
-## Model Summary
+## Docker
 
-- **Architecture**: YOLOv8s (small)
-- **Dataset**: Vehicles with Brazilian Mercosul plates
-- **Epochs**: 300 (early stopping around epoch 170)
-- **Metrics** (from `plate_detector_v1_summary.json`):
-  - Precision: ~99.7%
-  - Recall: ~99.2%
-  - mAP@50: ~99.5%
-  - mAP@50-95: ~95.6%
+```bash
+docker build -t br-plate-api .
+docker run --rm -p 8000:8000 br-plate-api
+```
 
-## Front-End Integration Tips
-- Use `GET /samples` to bootstrap a gallery of test images.
-- Use normalized box coordinates (`xmin_norm`, `ymin_norm`, `xmax_norm`, `ymax_norm`) to draw overlays independent of resizing.
-- Latency is measured per request and returned as `inference_time_ms`.
-- When requesting the annotated image, decode the base64 string into a PNG and display or store it directly.
+The image sets `MODEL_WEIGHTS_PATH` and `ALPR_WEIGHTS_PATH` under `/code/`. In production, set `PORT` as required by your orchestrator.
+
+### Render
+
+Connect the repository to a **Web Service** using the `Dockerfile` (or `render.yaml` if applicable). Render injects `PORT` automatically.
+
+---
+
+## Models
+
+| Role | Typical content |
+|------|-----------------|
+| **Detector** | YOLOv8 focused on Mercosul plate regions |
+| **ALPR** | YOLO with character classes (0–9, A–Z); string built left-to-right |
+
+Aggregated detector metrics are exposed via `GET /model/info` from `plate_detector_v1_summary.json`.
+
+---
+
+## Front-end integration
+
+- Use `xmin_norm` … `ymax_norm` to draw overlays at any scale.
+- Rank or highlight detections by `confidence` or box area according to your product rules.
+- For visual debugging, set `return_image=true` and decode the Base64 payload as a PNG.
+
+---
 
 ## License
-Distributed under the MIT License. See `LICENSE` for details.
+
+MIT. See the `LICENSE` file if present in the repository.
+
+---
 
 ## Acknowledgements
-- [Ultralytics](https://github.com/ultralytics/ultralytics) for YOLOv8.
-- Brazilian plate dataset contributors.
+
+- [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics)
+- Dataset contributors and curators of Brazilian plate imagery used for training
 
 ## Support
-- Create an [issue](https://github.com/sidnei-almeida/brazilian-license-plate-recognition/issues) for bugs or questions.
-- Connect on [LinkedIn](https://www.linkedin.com/in/saaelmeida93/).
+
+- [GitHub Issues](https://github.com/sidnei-almeida/brazilian-license-plate-recognition/issues)
+- [LinkedIn — Sidnei Almeida](https://www.linkedin.com/in/saaelmeida93/)
